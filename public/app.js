@@ -391,9 +391,89 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // ==========================================================
-  // 3. Dynamic SVG Arrow Overlay Engine
+  // 3. Live Dynamic Position Suggestions & SVG Arrow Engine
   // ==========================================================
+  function calculatePositionSuggestions() {
+    if (chess.game_over()) return { bestMove: null, threatMove: null, candidateMoves: [] };
+
+    const currentTurn = chess.turn(); // 'w' or 'b'
+    const legalMoves = chess.moves({ verbose: true });
+    if (legalMoves.length === 0) return { bestMove: null, threatMove: null, candidateMoves: [] };
+
+    const evaluatedMoves = [];
+
+    for (const move of legalMoves) {
+      chess.move(move);
+      const score = calculateEvaluation();
+      
+      // Check opponent immediate tactical response
+      let oppWorst = currentTurn === 'w' ? -9999 : 9999;
+      const oppMoves = chess.moves({ verbose: true });
+      for (const oppMove of oppMoves.slice(0, 6)) {
+        chess.move(oppMove);
+        const oppEval = calculateEvaluation();
+        chess.undo();
+        if (currentTurn === 'w' && oppEval < oppWorst) oppWorst = oppEval;
+        else if (currentTurn === 'b' && oppEval > oppWorst) oppWorst = oppEval;
+      }
+
+      chess.undo();
+
+      let dragonBonus = 0;
+      if (move.san.includes('Rxc3')) dragonBonus = 2.0;
+      if (move.to === 'c4' && move.piece === 'n') dragonBonus = 0.8;
+      if (move.san === 'h5' || move.san === 'd5') dragonBonus = 0.7;
+
+      const adjustedScore = currentTurn === 'w' 
+        ? (score + (oppWorst !== -9999 ? oppWorst * 0.25 : 0))
+        : (score - dragonBonus - (oppWorst !== 9999 ? oppWorst * 0.25 : 0));
+
+      evaluatedMoves.push({
+        move: move,
+        san: move.san,
+        score: adjustedScore
+      });
+    }
+
+    if (currentTurn === 'w') {
+      evaluatedMoves.sort((a, b) => b.score - a.score);
+    } else {
+      evaluatedMoves.sort((a, b) => a.score - b.score);
+    }
+
+    const bestMove = evaluatedMoves[0]?.move || null;
+    const topCandidates = evaluatedMoves.slice(0, 3);
+
+    // Calculate Opponent Threat
+    let threatMove = null;
+    if (bestMove) {
+      chess.move(bestMove);
+      const oppMoves = chess.moves({ verbose: true });
+      if (oppMoves.length > 0) {
+        let oppBest = oppMoves[0];
+        let oppBestScore = currentTurn === 'w' ? 9999 : -9999;
+        for (const oppMove of oppMoves) {
+          chess.move(oppMove);
+          const oppEval = calculateEvaluation();
+          chess.undo();
+          if (currentTurn === 'w' && oppEval < oppBestScore) {
+            oppBestScore = oppEval;
+            oppBest = oppMove;
+          } else if (currentTurn === 'b' && oppEval > oppBestScore) {
+            oppBestScore = oppEval;
+            oppBest = oppMove;
+          }
+        }
+        threatMove = oppBest;
+      }
+      chess.undo();
+    }
+
+    return { bestMove, threatMove, topCandidates };
+  }
+
   function squareToSvgCoords(sq) {
+    if (!sq || sq.length < 2) return { x: 400, y: 400 };
     const file = sq[0];
     const rank = sq[1];
     const files = boardOrientation === 'white' ? 'abcdefgh' : 'hgfedcba';
@@ -413,18 +493,41 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function renderArrows() {
     arrowPathsGroup.innerHTML = '';
-    if (!arrowsEnabled) return;
+    if (!arrowsEnabled || chess.game_over()) return;
 
-    const preset = TABIYA_PRESETS[variationSelect.value];
-    if (!preset || !preset.arrows) return;
+    const suggestions = calculatePositionSuggestions();
+    const arrowsToDraw = [];
 
-    preset.arrows.forEach(arr => {
+    // 1. Live Best Move Arrow (Green/Gold)
+    if (suggestions.bestMove) {
+      const isSac = suggestions.bestMove.san.includes('Rxc3');
+      arrowsToDraw.push({
+        from: suggestions.bestMove.from,
+        to: suggestions.bestMove.to,
+        color: isSac ? 'gold' : 'green',
+        desc: `Best: ${suggestions.bestMove.san}`
+      });
+    }
+
+    // 2. Live Opponent Threat Arrow (Red)
+    if (suggestions.threatMove) {
+      arrowsToDraw.push({
+        from: suggestions.threatMove.from,
+        to: suggestions.threatMove.to,
+        color: 'red',
+        desc: `Threat: ${suggestions.threatMove.san}`
+      });
+    }
+
+    arrowsToDraw.forEach(arr => {
       const from = squareToSvgCoords(arr.from);
       const to = squareToSvgCoords(arr.to);
 
       const dx = to.x - from.x;
       const dy = to.y - from.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist === 0) return;
+
       const shorten = 18;
       const targetX = to.x - (dx / dist) * shorten;
       const targetY = to.y - (dy / dist) * shorten;
@@ -454,12 +557,14 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // ==========================================================
-  // 4. Master Database Opening Stats
+  // 4. Master Database & Dynamic Live Candidate Suggestions
   // ==========================================================
   function updateMasterStats(presetKey) {
-    const preset = TABIYA_PRESETS[presetKey] || TABIYA_PRESETS['yugoslav_12h4'];
+    const preset = TABIYA_PRESETS[presetKey || variationSelect.value] || TABIYA_PRESETS['yugoslav_12h4'];
+    const turnName = chess.turn() === 'w' ? 'White' : 'Black';
+
     if (preset.stats) {
-      statsTotalGames.textContent = `${preset.stats.total} Master Games in this line`;
+      statsTotalGames.textContent = `${preset.stats.total} Master Games in line (${turnName} to move)`;
       statWhitePct.style.width = `${preset.stats.whitePct}%`;
       statWhitePct.textContent = `${preset.stats.whitePct}% ♔`;
 
@@ -470,12 +575,17 @@ document.addEventListener('DOMContentLoaded', () => {
       statBlackPct.textContent = `${preset.stats.blackPct}% ♚`;
     }
 
-    if (preset.candidates) {
-      masterCandidatesEl.innerHTML = '<span class="cand-label">Top GM Moves:</span>';
-      preset.candidates.forEach(cand => {
+    // Live Engine candidate moves calculation
+    const suggestions = calculatePositionSuggestions();
+    masterCandidatesEl.innerHTML = `<span class="cand-label">Engine Suggestions (${turnName}):</span>`;
+
+    if (suggestions.topCandidates && suggestions.topCandidates.length > 0) {
+      suggestions.topCandidates.forEach((cand, idx) => {
         const chip = document.createElement('button');
         chip.className = 'cand-chip';
-        chip.textContent = cand.label;
+        const icon = idx === 0 ? '⭐ Best: ' : (idx === 1 ? '🥈 Alt: ' : '🥉 Line: ');
+        chip.textContent = `${icon}${cand.san}`;
+
         chip.addEventListener('click', () => {
           const move = chess.move(cand.san);
           if (move) {
@@ -488,15 +598,17 @@ document.addEventListener('DOMContentLoaded', () => {
             currentMoveIndex = moveHistory.length - 1;
             renderBoard();
             renderMovesList();
-            classifyMove(move.san);
+            renderArrows();
             updateEvalBar();
+            classifyMove(move.san);
+            updateMasterStats();
 
-            appendUserBubble(`Master Move: ${cand.san}`);
+            appendUserBubble(`Played: ${cand.san}`);
 
             if (autoPlayOpponent && chess.turn() === 'w') {
               triggerWhiteAutoResponse(move.san);
             } else {
-              const prompt = `I played the master candidate move "${cand.san}" (${cand.label}). Break down the calculation and what tactical ideas Black is pursuing.`;
+              const prompt = `I played the recommended move "${cand.san}" on the board (FEN: ${chess.fen()}). Break down the tactical plan and candidate follow-ups.`;
               conversationHistory.push({ role: 'user', content: prompt });
               streamResponseFromOllama();
             }
@@ -716,6 +828,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderArrows();
     updateEvalBar();
     classifyMove(targetMove.san);
+    updateMasterStats();
   }
 
   // Navigation controls
@@ -728,6 +841,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderArrows();
     updateEvalBar();
     classifyMove(null);
+    updateMasterStats();
   });
 
   btnMovePrev.addEventListener('click', () => {
@@ -741,6 +855,7 @@ document.addEventListener('DOMContentLoaded', () => {
       renderArrows();
       updateEvalBar();
       classifyMove(null);
+      updateMasterStats();
     }
   });
 
