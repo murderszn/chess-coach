@@ -442,6 +442,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnToggleArrows = document.getElementById('btn-toggle-arrows');
   const arrowsStateText = document.getElementById('arrows-state-text');
   const btnToggleSound = document.getElementById('btn-toggle-sound');
+  const soundIconEmoji = document.getElementById('sound-icon-emoji');
   const btnToggleMasterStats = document.getElementById('btn-toggle-master-stats');
   const masterStatsBanner = document.getElementById('master-stats-banner');
   const statsTotalGames = document.getElementById('stats-total-games');
@@ -1305,9 +1306,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
   btnToggleArrows.addEventListener('click', () => {
     arrowsEnabled = !arrowsEnabled;
-    arrowsStateText.textContent = arrowsEnabled ? 'ON' : 'OFF';
-    btnToggleArrows.classList.toggle('active-toggle', arrowsEnabled);
+    arrowsStateText.textContent = arrowsEnabled ? 'ARROWS' : 'OFF';
+    btnToggleArrows.classList.toggle('active', arrowsEnabled);
     renderArrows();
+  });
+
+  btnToggleMasterStats.addEventListener('click', () => {
+    masterStatsBanner.classList.toggle('active');
+    btnToggleMasterStats.classList.toggle('active', masterStatsBanner.classList.contains('active'));
+    if (masterStatsBanner.classList.contains('active')) {
+      updateMasterStats();
+    }
   });
 
   // ==========================================================
@@ -1978,14 +1987,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   btnToggleAutoPlay.addEventListener('click', () => {
     autoPlayOpponent = !autoPlayOpponent;
-    autoPlayStateText.textContent = autoPlayOpponent ? 'ON' : 'OFF';
-    btnToggleAutoPlay.classList.toggle('active-toggle', autoPlayOpponent);
+    autoPlayStateText.textContent = autoPlayOpponent ? 'AUTO' : 'OFF';
+    btnToggleAutoPlay.classList.toggle('active', autoPlayOpponent);
   });
 
   btnToggleSound.addEventListener('click', () => {
     soundEnabled = !soundEnabled;
-    btnToggleSound.textContent = soundEnabled ? '🔊 Sound' : '🔇 Muted';
-    btnToggleSound.classList.toggle('active-toggle', soundEnabled);
+    soundIconEmoji.textContent = soundEnabled ? '🔊' : '🔇';
+    btnToggleSound.classList.toggle('active', soundEnabled);
   });
 
   btnModalRematch.addEventListener('click', () => {

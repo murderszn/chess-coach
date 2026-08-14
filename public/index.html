@@ -23,75 +23,78 @@
          ========================================================== -->
     <main class="board-main-stage">
       
-      <!-- Top Control Header -->
+      <!-- Clean Streamlined Top Control Bar -->
       <div class="board-top-bar">
-        <div class="repertoire-switch-group">
-          <button class="rep-toggle-btn active" id="btn-rep-black" data-rep="black_dragon" title="Black Repertoire: Sicilian Dragon Mastery (Dark Theme)">
-            ⚔️ Black: Dragon
-          </button>
-          <button class="rep-toggle-btn" id="btn-rep-white" data-rep="white_attack" title="White Repertoire: Aggressive 1.e4 Fried Liver & Gambits (Light Theme)">
-            ⚡ White: 1.e4 Attack
-          </button>
-        </div>
-
-        <!-- Mode Switch: Tabiya Openings vs Tactical Master Tests -->
-        <div class="mode-switch-group">
-          <button class="mode-toggle-btn active" id="btn-mode-tabiya" title="Repertoire Opening Lines & Sparring">
-            📖 Lines
-          </button>
-          <button class="mode-toggle-btn" id="btn-mode-puzzles" title="Tactical Puzzles & Master Tests">
-            🧩 Puzzles
-          </button>
-        </div>
-
-        <div class="variation-picker-wrapper" id="variation-picker-wrapper">
-          <label for="variation-select" class="picker-label" id="picker-label">Preset</label>
-          <select id="variation-select" class="preset-dropdown">
-            <!-- Dynamically populated based on active repertoire / mode -->
-          </select>
-        </div>
-
-        <div class="top-status-group">
-          <!-- Move Classification Badge (Chess.com Style) -->
-          <div class="move-classification-badge" id="move-class-badge" title="Move Quality Evaluation">
-            <span class="badge-icon">✓</span>
-            <span class="badge-text">Book Tabiya</span>
+        <!-- Left Cluster: Segmented Repertoire, Mode & Preset Selector -->
+        <div class="top-bar-left">
+          <div class="segmented-control" id="rep-segmented">
+            <button class="seg-btn active" id="btn-rep-black" title="Black Repertoire: Sicilian Dragon (Dark Theme)">
+              ⚔️ Black
+            </button>
+            <button class="seg-btn" id="btn-rep-white" title="White Repertoire: Aggressive 1.e4 & Fried Liver (Light Theme)">
+              ⚡ White
+            </button>
           </div>
 
-          <div class="turn-pill" id="turn-pill">
+          <div class="segmented-control" id="mode-segmented">
+            <button class="seg-btn active" id="btn-mode-tabiya" title="Repertoire Opening Lines & Sparring">
+              📖 Theory
+            </button>
+            <button class="seg-btn" id="btn-mode-puzzles" title="Tactical Puzzles & Master Tests">
+              🧩 Puzzles
+            </button>
+          </div>
+
+          <div class="preset-select-capsule" id="variation-picker-wrapper">
+            <select id="variation-select" class="preset-dropdown-clean">
+              <!-- Dynamically populated based on active repertoire / mode -->
+            </select>
+          </div>
+        </div>
+
+        <!-- Right Cluster: Status & Unified Tool Actions -->
+        <div class="top-bar-right">
+          <!-- Integrated Turn & Move Quality Capsule -->
+          <div class="status-capsule" id="turn-pill">
             <span class="turn-dot black" id="turn-dot"></span>
-            <span id="turn-text">Black to move</span>
+            <span class="status-turn-label" id="turn-text">Black to move</span>
+            <div class="move-classification-badge" id="move-class-badge" title="Move Quality Evaluation">
+              <span class="badge-icon">✓</span>
+              <span class="badge-text">Book</span>
+            </div>
           </div>
 
-          <!-- Auto-Opponent Sparring Mode Toggle -->
-          <button class="action-chip active-toggle" id="btn-toggle-auto-play" title="Toggle Auto-Opponent (Coach plays White's most likely response)">
-            ⚔️ Auto-Reply: <span id="auto-play-state-text">ON</span>
-          </button>
-
-          <!-- Threat & Best Move Arrows Toggle -->
-          <button class="action-chip active-toggle" id="btn-toggle-arrows" title="Toggle Threat & Best Move Arrows">
-            🎯 Arrows: <span id="arrows-state-text">ON</span>
-          </button>
-
-          <!-- Master Database Stats Toggle -->
-          <button class="action-chip" id="btn-toggle-master-stats" title="View Grandmaster Opening Stats">
-            🏛️ Master DB
-          </button>
-
-          <!-- Sound FX Toggle -->
-          <button class="action-chip active-toggle" id="btn-toggle-sound" title="Toggle Sound FX">
-            🔊 Sound
-          </button>
-
-          <button class="action-chip" id="btn-flip-board" title="Flip Board Perspective">
-            🔄 Flip
-          </button>
-          <button class="action-chip" id="btn-reset-board" title="Reset Current Tabiya / Puzzle">
-            ⏮️ Reset
-          </button>
-          <button class="action-chip" id="fen-badge" title="Click to copy FEN">
-            📋 FEN
-          </button>
+          <!-- Clean Action Tools Island -->
+          <div class="action-icon-group">
+            <button class="tool-icon-btn active" id="btn-toggle-auto-play" title="Auto-Opponent Sparring: ON/OFF">
+              <span class="btn-emoji">⚔️</span>
+              <span class="btn-subtext" id="auto-play-state-text">AUTO</span>
+            </button>
+            <button class="tool-icon-btn active" id="btn-toggle-arrows" title="Tactical & Best Move Arrows: ON/OFF">
+              <span class="btn-emoji">🎯</span>
+              <span class="btn-subtext" id="arrows-state-text">ARROWS</span>
+            </button>
+            <button class="tool-icon-btn" id="btn-toggle-master-stats" title="Lichess Master Opening Database">
+              <span class="btn-emoji">🏛️</span>
+              <span class="btn-subtext">STATS</span>
+            </button>
+            <button class="tool-icon-btn active" id="btn-toggle-sound" title="Sound Effects: ON/OFF">
+              <span class="btn-emoji" id="sound-icon-emoji">🔊</span>
+              <span class="btn-subtext">AUDIO</span>
+            </button>
+            <button class="tool-icon-btn" id="btn-flip-board" title="Flip Board Perspective">
+              <span class="btn-emoji">🔄</span>
+              <span class="btn-subtext">FLIP</span>
+            </button>
+            <button class="tool-icon-btn" id="btn-reset-board" title="Reset Current Position">
+              <span class="btn-emoji">⏮️</span>
+              <span class="btn-subtext">RESET</span>
+            </button>
+            <button class="tool-icon-btn" id="fen-badge" title="Click to copy FEN">
+              <span class="btn-emoji">📋</span>
+              <span class="btn-subtext">FEN</span>
+            </button>
+          </div>
         </div>
       </div>
 
