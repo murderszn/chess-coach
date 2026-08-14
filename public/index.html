@@ -40,28 +40,97 @@
         </div>
 
         <div class="top-status-group">
+          <!-- Move Classification Badge (Chess.com Style) -->
+          <div class="move-classification-badge" id="move-class-badge" title="Move Quality Evaluation">
+            <span class="badge-icon">✓</span>
+            <span class="badge-text">Book Tabiya</span>
+          </div>
+
           <div class="turn-pill" id="turn-pill">
             <span class="turn-dot black" id="turn-dot"></span>
             <span id="turn-text">Black to move</span>
           </div>
+
+          <!-- Threat & Best Move Arrows Toggle -->
+          <button class="action-chip active-toggle" id="btn-toggle-arrows" title="Toggle Threat & Best Move Arrows">
+            🎯 Arrows: <span id="arrows-state-text">ON</span>
+          </button>
+
+          <!-- Master Database Stats Toggle -->
+          <button class="action-chip" id="btn-toggle-master-stats" title="View Grandmaster Opening Stats">
+            🏛️ Master DB
+          </button>
+
           <button class="action-chip" id="btn-flip-board" title="Flip Board Perspective">
-            🔄 Flip Board
+            🔄 Flip
           </button>
           <button class="action-chip" id="btn-reset-board" title="Reset Current Tabiya">
             ⏮️ Reset
           </button>
           <button class="action-chip" id="fen-badge" title="Click to copy FEN">
-            📋 Copy FEN
+            📋 FEN
           </button>
         </div>
       </div>
 
-      <!-- Large Board Stage Area -->
+      <!-- Master Database Quick Stats Banner (Collapsible) -->
+      <div class="master-stats-banner" id="master-stats-banner">
+        <div class="stats-header">
+          <span class="stats-title">🏛️ LICHESS GRANDMASTER DATABASE (2,200+ Elo):</span>
+          <span class="stats-total-games" id="stats-total-games">3,480 Master Games in this Sicilian Line</span>
+        </div>
+        <div class="stats-bar-container">
+          <div class="stats-bar-segment white-win" id="stat-white-pct" style="width: 44%" title="White Wins: 44%">44% ♔</div>
+          <div class="stats-bar-segment draw" id="stat-draw-pct" style="width: 28%" title="Draw: 28%">28% =</div>
+          <div class="stats-bar-segment black-win" id="stat-black-pct" style="width: 28%" title="Black Wins: 28%">28% ♚</div>
+        </div>
+        <div class="master-candidate-chips" id="master-candidates">
+          <span class="cand-label">Top GM Moves:</span>
+          <button class="cand-chip" data-move="Nc4">12...Nc4 (1,820 games &bull; 51% Score)</button>
+          <button class="cand-chip" data-move="h5">12...h5 (940 games &bull; 48% Score)</button>
+          <button class="cand-chip" data-move="Rxc3">...Rxc3! (Thematic Sac &bull; 62% Win)</button>
+        </div>
+      </div>
+
+      <!-- Large Board Stage Area with Live Eval Bar & Dynamic SVG Arrows -->
       <div class="chessboard-stage">
-        <div class="board-frame">
+        
+        <!-- Live Chess.com-Style Evaluation Bar -->
+        <div class="eval-bar-wrapper" id="eval-bar-container" title="Stockfish Live Position Evaluation">
+          <div class="eval-score-label" id="eval-score-text">0.0</div>
+          <div class="eval-track">
+            <div class="eval-fill-black" id="eval-fill-black" style="height: 50%;"></div>
+            <div class="eval-fill-white" id="eval-fill-white" style="height: 50%;"></div>
+          </div>
+        </div>
+
+        <div class="board-frame" id="board-frame">
           <div class="board-grid" id="chessboard">
             <!-- Rendered 8x8 via JS with high-res vector SVGs -->
           </div>
+
+          <!-- Dynamic SVG Arrow Overlay for Best Moves & Threats -->
+          <svg class="board-arrow-overlay" id="board-arrow-overlay" viewBox="0 0 800 800">
+            <defs>
+              <!-- Arrowhead Markers -->
+              <marker id="arrow-green" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+                <polygon points="0 0, 6 3, 0 6" fill="#34d399" />
+              </marker>
+              <marker id="arrow-red" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+                <polygon points="0 0, 6 3, 0 6" fill="#f87171" />
+              </marker>
+              <marker id="arrow-gold" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+                <polygon points="0 0, 6 3, 0 6" fill="#fbbf24" />
+              </marker>
+              <marker id="arrow-blue" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+                <polygon points="0 0, 6 3, 0 6" fill="#60a5fa" />
+              </marker>
+            </defs>
+            <g id="arrow-paths-group">
+              <!-- Rendered dynamically by app.js -->
+            </g>
+          </svg>
+
           <div class="coords-ranks" id="coords-ranks">
             <span>8</span><span>7</span><span>6</span><span>5</span><span>4</span><span>3</span><span>2</span><span>1</span>
           </div>
@@ -133,9 +202,9 @@
             When White pushed <strong>12.h4</strong>, you hesitated.
           </div>
           <div class="msg-bubble coach-bubble">
-            In this opposite-castling race, hesitation is fatal. If you're slow, White blasts the h-file open with <em>h5, Bh6,</em> and <em>g4</em>.
+            Notice the live <strong>Threat Arrows</strong> on the board: White threatens to pry open the h-file with <em>h5!</em> and <em>Bh6</em>.
             <br><br>
-            What was your concrete plan? Calculating the <strong>12...Nc4</strong> outpost jump, the <strong>12...h5</strong> Soltis blockade, or preparing the classic <strong>...Rxc3</strong> exchange sacrifice? Make your move on the board or talk to me! ♟️
+            Black has two master-level replies: the outpost jump <strong>12...Nc4</strong> or the <strong>12...h5</strong> Soltis blockade. Play a move on the board or ask me for calculation guidance! ♟️
           </div>
           <div class="msg-delivered-receipt">Delivered &bull; Read 5:03 AM</div>
         </div>
