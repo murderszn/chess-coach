@@ -17,11 +17,22 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.get('/favicon.ico', (req, res) => res.sendFile(path.join(__dirname, 'public', 'favicon.svg')));
 
 // System prompt generator for Grandmaster Vance with dynamic board & repertoire awareness
-function buildSystemPrompt(boardContext) {
+function buildSystemPrompt(boardContext, engineAnalysis = null) {
   let boardInfo = '';
   const repertoire = boardContext?.repertoire || 'black_dragon';
   const mode = boardContext?.mode || 'tabiya';
   const moveBeingExplained = boardContext?.explaining_move || null;
+
+  let engineSection = '';
+  if (engineAnalysis && engineAnalysis.best_move_san) {
+    engineSection = `
+[STOCKFISH 18 NNUE ENGINE TRUTH - DEPTH ${engineAnalysis.depth || 14}]:
+- Verified Engine Best Move: ${engineAnalysis.best_move_san} (Evaluation: ${engineAnalysis.eval_score})
+- Engine PV Line: ${engineAnalysis.pv || 'N/A'}
+- CRITICAL ENGINE MANDATE: You MUST recommend ${engineAnalysis.best_move_san} as the primary candidate move. 
+- TACTICAL SANITY: NEVER recommend moves that hang pieces or walk into direct capture (e.g. never suggest ...Qa5 if White's Queen or Bishop can capture it for free). Explain the concrete tactical reasoning for ${engineAnalysis.best_move_san}.
+`;
+  }
 
   if (boardContext) {
     boardInfo = `
@@ -37,6 +48,7 @@ ${moveBeingExplained ? `- Move Being Analyzed: ${moveBeingExplained}` : ''}
 - In Check: ${boardContext.is_check ? 'YES' : 'No'}
 - Game Over: ${boardContext.is_game_over ? (boardContext.is_checkmate ? 'CHECKMATE' : 'DRAW') : 'Active'}
 - Legal Candidate Moves: ${Array.isArray(boardContext.legal_moves) ? boardContext.legal_moves.slice(0, 10).join(', ') : 'N/A'}
+${engineSection}
 `;
   }
 
@@ -52,7 +64,7 @@ THEORY & STRATEGY (WHITE 1.e4 ATTACK):
     strategicThemes = `
 THEORY & STRATEGY (BLACK SICILIAN DRAGON):
 - The g7 Bishop: Black's key asset along the h8-a1 diagonal. Never trade it without decisive tactical compensation.
-- The ...Rxc3 Exchange Sacrifice: Shatters White's queenside shelter, opening the c-file for ...Qa5, ...Rfc8, and ...Nc4.
+- The ...Rxc3 Exchange Sacrifice: Shatters White's queenside shelter. If White recaptures with 13.bxc3, Black plays 13...Qa5. But if White recaptures with 13.Qxc3, Black MUST NOT play ...Qa5 (which blunders the Queen to 14.Qxa5); Black should instead play 13...h5! to halt the kingside attack, or active maneuvers like ...Rc8, ...Nc6, or ...Nc4.
 - Central Counter: Against White's flank pawn storm (h4-h5), strike in the center with ...d5!
 - Outpost c4: Critical square for Black's knight to command the queenside.
 - Tempo in Opposite Castling: In the Yugoslav Attack, passive moves (like ...a6 or ...h6) surrender crucial tempi. Black must relentlessly pursue active counterplay with ...Rc8, ...Nc4, or ...d5!.`;
@@ -84,7 +96,7 @@ ${boardInfo}
 COACHING PRINCIPLES:
 1. BREVITY & PRECISION: Keep every response strictly between 2 to 4 sentences. Be direct, authoritative, and incisive.
 2. NO EMOJIS: Do NOT use any emojis. Communicate with pure analytical clarity and classical elegance.
-3. CHESS TRUTH & THEORY: Reference exact notation (e.g., 6.Nxf7!, 7.Qf3+, ...Rxc3, 12...Nc4, 12...h5). Never hallucinate board pieces or positions; rely strictly on the live FEN and move sequence provided.
+3. CHESS TRUTH & ENGINE ACCURACY: Always recommend the Engine Best Move. NEVER hallucinate board pieces or recommend moves that hang pieces.
 ${strategicThemes}
 ${modeGuidance}`;
 }
@@ -93,7 +105,7 @@ ${modeGuidance}`;
 // Health and model discovery
 app.get('/api/health', async (req, res) => {
   try {
-    const response = await fetch(`${OLLAMA_HOST}/api/tags`);
+    const response = await nodeFetch(`${OLLAMA_HOST}/api/tags`);
     if (!response.ok) {
       return res.status(502).json({ status: 'ollama_error', error: 'Ollama is unreachable' });
     }
@@ -111,7 +123,7 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
-// Streaming Chat API with Dynamic Board Context
+// Streaming Chat API with Dynamic Board Context & Live Stockfish Ground Truth
 app.post('/api/chat', async (req, res) => {
   const { messages, board_context, model = DEFAULT_MODEL } = req.body;
 
@@ -119,7 +131,32 @@ app.post('/api/chat', async (req, res) => {
     return res.status(400).json({ error: 'Messages array is required' });
   }
 
-  const systemPrompt = buildSystemPrompt(board_context);
+  let engineAnalysis = null;
+  if (board_context && board_context.fen && !board_context.is_game_over) {
+    try {
+      const sfResult = await queryStockfish(board_context.fen, 14, 20);
+      if (sfResult.bestMoveUci && sfResult.bestMoveUci !== '(none)') {
+        const chessInstance = new Chess(board_context.fen);
+        const from = sfResult.bestMoveUci.slice(0, 2);
+        const to = sfResult.bestMoveUci.slice(2, 4);
+        const promotion = sfResult.bestMoveUci.length > 4 ? sfResult.bestMoveUci[4] : undefined;
+        const moveObj = chessInstance.move({ from, to, promotion });
+        if (moveObj) {
+          engineAnalysis = {
+            best_move_san: moveObj.san,
+            best_move_uci: sfResult.bestMoveUci,
+            eval_score: (sfResult.scoreCp / 100).toFixed(2),
+            pv: sfResult.pvLine,
+            depth: sfResult.depth
+          };
+        }
+      }
+    } catch (e) {
+      console.warn('Engine analysis query notice:', e.message);
+    }
+  }
+
+  const systemPrompt = buildSystemPrompt(board_context, engineAnalysis);
   const fullMessages = [
     { role: 'system', content: systemPrompt },
     ...messages

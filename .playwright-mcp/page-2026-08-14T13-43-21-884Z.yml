@@ -1,0 +1,168 @@
+- generic [ref=e2]:
+  - navigation [ref=e3]:
+    - generic [ref=e4]: Chess Coach · Docs
+    - heading "Architecture" [level=1] [ref=e5]
+    - paragraph [ref=e6]: How the board, engine, and coach talk to each other.
+    - list [ref=e7]:
+      - listitem [ref=e8]:
+        - link "1. Runtime map" [ref=e9] [cursor=pointer]:
+          - /url: "#runtime"
+      - listitem [ref=e10]:
+        - link "2. Client state" [ref=e11] [cursor=pointer]:
+          - /url: "#state"
+      - listitem [ref=e12]:
+        - link "3. A move on the board" [ref=e13] [cursor=pointer]:
+          - /url: "#move"
+      - listitem [ref=e14]:
+        - link "4. Auto-opponent" [ref=e15] [cursor=pointer]:
+          - /url: "#auto"
+      - listitem [ref=e16]:
+        - link "5. Eval bar and arrows" [ref=e17] [cursor=pointer]:
+          - /url: "#eval"
+      - listitem [ref=e18]:
+        - link "6. Coach stream" [ref=e19] [cursor=pointer]:
+          - /url: "#coach"
+      - listitem [ref=e20]:
+        - link "7. Puzzle engine" [ref=e21] [cursor=pointer]:
+          - /url: "#puzzle"
+      - listitem [ref=e22]:
+        - link "8. Prompt sources" [ref=e23] [cursor=pointer]:
+          - /url: "#prompts"
+      - listitem [ref=e24]:
+        - link "9. Files" [ref=e25] [cursor=pointer]:
+          - /url: "#files"
+    - generic [ref=e26]:
+      - link "GitHub repo" [ref=e27] [cursor=pointer]:
+        - /url: https://github.com/murderszn/chess-coach
+      - link "README" [ref=e28] [cursor=pointer]:
+        - /url: https://github.com/murderszn/chess-coach#readme
+  - main [ref=e29]:
+    - generic [ref=e30]:
+      - generic [ref=e31]: GM Julian Vance
+      - heading "Sicilian Dragon Chess Coach" [level=2] [ref=e32]
+      - paragraph [ref=e33]: Two jobs, split cleanly. The board is legal chess plus a search stack (Lichess masters, Stockfish 18 WASM, then a local fallback). The words are Ollama Gemma 4, prompted with the live FEN. Express never plays chess itself — it proxies chat and queues engine jobs.
+      - generic [ref=e34]:
+        - generic [ref=e35]: Express :3030
+        - generic [ref=e36]: Ollama gemma4
+        - generic [ref=e37]: Stockfish 18 NNUE
+        - generic [ref=e38]: Lichess Masters
+        - generic [ref=e39]: chess.js
+    - generic [ref=e40]:
+      - heading "1. Runtime map" [level=3] [ref=e41]
+      - paragraph [ref=e42]:
+        - text: The browser owns UI state.
+        - code [ref=e43]: POST /api/chat
+        - text: streams coaching.
+        - code [ref=e44]: POST /api/engine/bestmove
+        - text: asks Lichess first (early book), then Stockfish.
+    - generic [ref=e49]:
+      - heading "2. Client state" [level=3] [ref=e50]
+      - paragraph [ref=e51]:
+        - code [ref=e52]: currentRepertoire
+        - text: is
+        - code [ref=e53]: black_dragon
+        - text: or
+        - code [ref=e54]: white_attack
+        - text: .
+        - code [ref=e55]: currentMode
+        - text: is
+        - code [ref=e56]: tabiya
+        - text: or
+        - code [ref=e57]: puzzle
+        - text: .
+        - code [ref=e58]: moveHistory[]
+        - text: is the game tree.
+        - code [ref=e59]: conversationHistory[]
+        - text: is what Gemma sees.
+      - generic [ref=e60]: "stateDiagram-v2 [*] --> Boot: DOMContentLoaded Boot --> TheoryBlack: setRepertoire black_dragon TheoryBlack --> TheoryWhite: Black / White toggle TheoryWhite --> TheoryBlack TheoryBlack --> PuzzleBlack: Puzzles mode TheoryWhite --> PuzzleWhite: Puzzles mode PuzzleBlack --> TheoryBlack: Theory mode PuzzleWhite --> TheoryWhite: Theory mode state TheoryBlack { [*] --> LoadTabiya LoadTabiya --> StudentToMove StudentToMove --> AutoOpp: legal student move + AUTO on AutoOpp --> StudentToMove: engine or book reply StudentToMove --> CoachStream: AUTO off AutoOpp --> CoachStream: after reply } state PuzzleBlack { [*] --> LoadPuzzleFen LoadPuzzleFen --> TryMove TryMove --> UndoWrong: SAN not in solutionMoves UndoWrong --> TryMove TryMove --> OppScript: correct + scripted opp OppScript --> TryMove TryMove --> Solved: last step correct }"
+    - generic [ref=e62]:
+      - heading "3. A move on the board" [level=3] [ref=e63]
+      - paragraph [ref=e64]:
+        - text: Click, drag, a candidate chip, or a clickable SAN pill all land in
+        - code [ref=e65]: handleMoveAttempt(from, to)
+        - text: . chess.js is the only legal-move authority.
+      - generic [ref=e66]: "flowchart TD Input[\"Click square, drop piece, candidate chip, or chat SAN\"] --> Attempt[\"handleMoveAttempt from, to\"] Attempt --> Legal{\"chess.move OK?\"} Legal -->|no| Reselect[\"Select that piece if it is side to move, else clear\"] Legal -->|yes| Commit[\"Push moveHistory, play SFX, renderBoard\"] Commit --> UIRefresh[\"renderMovesList, renderArrows, updateEvalBar, classifyMove\"] UIRefresh --> GameOver{\"chess.game_over?\"} GameOver -->|yes| Modal[\"Game-over modal + coach recap\"] GameOver -->|no| Mode{\"currentMode\"} Mode -->|puzzle| Puzzle[\"handlePuzzleMove\"] Mode -->|tabiya| AutoQ{\"AUTO on and opponent to move?\"} AutoQ -->|yes| Opp[\"triggerAutoOpponentResponse\"] AutoQ -->|no| Coach[\"Push analysis prompt, streamResponseFromOllama\"]"
+    - generic [ref=e68]:
+      - heading "4. Auto-opponent" [level=3] [ref=e69]
+      - paragraph [ref=e70]: After a 450ms pause the client asks the server engine. If that fails, it falls back to the hardcoded opening book, then the local heuristic search.
+      - generic [ref=e71]: "flowchart TD Trigger[\"triggerAutoOpponentResponse\"] --> Gate{\"AUTO on, not player turn, not game over?\"} Gate -->|no| Stop[\"Return\"] Gate -->|yes| Wait[\"450ms think delay\"] Wait --> API[\"POST /api/engine/bestmove FEN depth 14\"] API --> Masters{\"Early game and Lichess masters hit?\"} Masters -->|yes| Play[\"Play top master SAN\"] Masters -->|no or error| SF[\"queryStockfish queued WASM\"] SF --> Have{\"bestmove UCI?\"} Have -->|yes| Play Have -->|no| Local[\"pickAutoOpponentMove\"] Local --> BookHist{\"OPENING_BOOK exact SAN history?\"} BookHist -->|hit| Play BookHist -->|miss| BookTac{\"OPENING_BOOK last SAN?\"} BookTac -->|hit| Play BookTac -->|miss| Heuristic[\"calculatePositionSuggestions\"] Heuristic --> Play Play --> Refresh[\"Render + classify + eval\"] Refresh --> Over{\"Game over?\"} Over -->|yes| Modal[\"checkGameOverStatus\"] Over -->|no| Narrate[\"Hidden prompt: student played X, opponent answered Y\"] Narrate --> Stream[\"streamResponseFromOllama\"]"
+    - generic [ref=e73]:
+      - heading "5. Eval bar and arrows" [level=3] [ref=e74]
+      - paragraph [ref=e75]:
+        - text: The eval bar paints the local score immediately, then overwrites it with Stockfish after 150ms (
+        - code [ref=e76]: "use_book: false"
+        - text: ). Arrows still mix coach advice, puzzle targets, and the local suggestion cache.
+      - generic [ref=e77]: "flowchart LR Fen[\"Current chess.js FEN\"] --> Instant[\"Local evaluateBoardState\"] Instant --> Paint[\"applyEvalBarScore now\"] Fen --> Debounce[\"150ms debounce\"] Debounce --> SF[\"POST /api/engine/bestmove depth 10\"] SF --> Paint2[\"Overwrite bar with eval_score\"] Fen --> Arrows[\"renderArrows\"] Arrows --> Hint[\"Blue / gold: custom hint\"] Arrows --> Puzzle[\"Gold: puzzle target SAN\"] Arrows --> CoachArr[\"Coach advice arrow\"] Arrows --> LocalBest[\"Green / gold: local best\"] Arrows --> Threat[\"Red: opponent threat\"]"
+    - generic [ref=e79]:
+      - heading "6. Coach stream" [level=3] [ref=e80]
+      - paragraph [ref=e81]: Every coaching turn rebuilds a system prompt from the live board. Replies are constrained to 2–4 sentences, no emojis, exact notation.
+      - generic [ref=e82]: "sequenceDiagram autonumber actor Student participant App as app.js participant API as POST /api/chat participant Prompt as buildSystemPrompt participant Ollama as Ollama /api/chat Student->>App: Chat send, Ask Coach, Explain Move, or auto prompt App->>App: getCurrentBoardContext FEN, SAN, repertoire, mode App->>API: messages + board_context API->>Prompt: repertoire, mode, explaining_move Prompt-->>API: system GM Julian Vance API->>Ollama: system + conversationHistory stream true loop Tokens Ollama-->>API: NDJSON message.content API-->>App: SSE data content App-->>Student: Grow iMessage bubble, format SAN pills end Ollama-->>API: done API-->>App: data DONE App->>App: Push assistant turn onto conversationHistory"
+      - paragraph [ref=e84]:
+        - text: Dragon prompts stress
+        - code [ref=e85]: ...Rxc3
+        - text: ", the g7 bishop, c4, and"
+        - code [ref=e86]: ...d5
+        - text: . White 1.e4 prompts stress f7, Fried Liver, Evans, Morra, and Grand Prix. Native
+        - code [ref=e87]: fetch
+        - text: is saved before Stockfish WASM loads so chat streaming still works.
+    - generic [ref=e88]:
+      - heading "7. Puzzle engine" [level=3] [ref=e89]
+      - paragraph [ref=e90]: Puzzles are scripted SAN lists, not Stockfish. A wrong try is undone. Hint draws a blue arrow and shows canned text — it does not call Ollama.
+      - generic [ref=e91]: "flowchart TD Load[\"loadPuzzle: chess.load FEN, wipe history\"] --> Play[\"Student move\"] Play --> Match{\"SAN in solutionMoves step.player?\"} Match -->|no| Undo[\"SFX mistake, undo after 700ms\"] Undo --> Play Match -->|yes| Next[\"SFX brilliant, step++\"] Next --> Opp{\"step.opp set?\"} Opp -->|yes| Script[\"Play scripted reply after 500ms\"] Script --> Play Opp -->|no last step| Win[\"handlePuzzleSolved: score, explanation, coach stream\"] Hint[\"Hint button\"] --> Arrow[\"Blue arrow on first accepted SAN\"] Hint --> HintText[\"Show puzzle.hint, skip Ollama\"] Reveal[\"Solution button\"] --> Win"
+    - generic [ref=e93]:
+      - heading "8. Prompt sources" [level=3] [ref=e94]
+      - paragraph [ref=e95]:
+        - text: Almost everything goes through
+        - code [ref=e96]: streamResponseFromOllama
+        - text: . Explain Move posts the same
+        - code [ref=e97]: /api/chat
+        - text: shape itself and sets
+        - code [ref=e98]: explaining_move
+        - text: .
+      - generic [ref=e99]: flowchart TB subgraph Sources["What creates a coach turn"] A["Sidebar iMessage send"] B["Ask Coach button"] C["Explain Move button"] D["Tactic chip"] E["Student move with AUTO off"] F["After auto-opponent reply"] G["Load tabiya / puzzle with triggerCoachPrompt"] H["Puzzle solved"] I["Game over"] end A --> Stream["streamResponseFromOllama"] B --> Stream D --> Stream E --> Stream F --> Stream G --> Stream H --> Stream I --> Stream C --> Explain["Dedicated fetch with explaining_move"] Stream --> Board["Attach getCurrentBoardContext"] Explain --> Board
+    - generic [ref=e101]:
+      - heading "9. Files" [level=3] [ref=e102]
+      - table [ref=e103]:
+        - rowgroup [ref=e104]:
+          - row [ref=e105]:
+            - columnheader "Path" [ref=e106]
+            - columnheader "Role" [ref=e107]
+        - rowgroup [ref=e108]:
+          - row [ref=e109]:
+            - cell [ref=e110]:
+              - code [ref=e111]: server.js
+            - cell "Static files, health, chat proxy, Stockfish queue, Lichess book" [ref=e112]
+          - row [ref=e113]:
+            - cell [ref=e114]:
+              - code [ref=e115]: public/index.html
+            - cell "Golden-ratio board + iMessage sidebar" [ref=e116]
+          - row [ref=e117]:
+            - cell [ref=e118]:
+              - code [ref=e119]: public/app.js
+            - cell "Game tree, puzzles, eval, arrows, streaming" [ref=e120]
+          - row [ref=e121]:
+            - cell [ref=e122]:
+              - code [ref=e123]: public/pieces.js
+            - cell "SVG piece set" [ref=e124]
+          - row [ref=e125]:
+            - cell [ref=e126]:
+              - code [ref=e127]: public/vendor/chess.min.js
+            - cell "Legal moves, FEN, PGN" [ref=e128]
+          - row [ref=e129]:
+            - cell [ref=e130]:
+              - code [ref=e131]: test_coach_suite.js
+            - cell [ref=e132]:
+              - text: Live coach role-play against
+              - code [ref=e133]: /api/chat
+          - row [ref=e134]:
+            - cell [ref=e135]:
+              - code [ref=e136]: docs/index.html
+            - cell "This architecture page (GitHub Pages)" [ref=e137]
+      - paragraph [ref=e138]: REVIEW and PGN controls exist in the HTML and are queried as DOM refs, but they are not wired to handlers yet.
+    - generic [ref=e139]:
+      - text: Hosted from the
+      - code [ref=e140]: docs/
+      - text: folder on
+      - link "murderszn/chess-coach" [ref=e141] [cursor=pointer]:
+        - /url: https://github.com/murderszn/chess-coach
+      - text: via GitHub Pages.

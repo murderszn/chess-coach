@@ -2303,6 +2303,37 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  function isMoveTacticallySafe(moveObj) {
+    if (!moveObj) return false;
+    const testChess = new Chess(chess.fen());
+    const executed = testChess.move(moveObj);
+    if (!executed) return false;
+
+    // Check if opponent has an immediate undefended capture of the moved piece
+    const movedPieceType = executed.piece;
+    const movedTo = executed.to;
+
+    if (['q', 'r', 'b', 'n'].includes(movedPieceType)) {
+      const oppReplies = testChess.moves({ verbose: true });
+      const captureOfPiece = oppReplies.find(m => m.to === movedTo);
+      if (captureOfPiece) {
+        testChess.move(captureOfPiece);
+        const recapture = testChess.moves({ verbose: true }).find(m => m.to === movedTo);
+        testChess.undo();
+
+        // If no recapture defender exists, the piece is hanging for free! Reject!
+        if (!recapture) {
+          return false;
+        }
+        // If Queen is attacked by an undefended lesser piece, reject as a blunder
+        if (movedPieceType === 'q' && ['p', 'n', 'b', 'r'].includes(captureOfPiece.piece) && (!recapture || recapture.piece === 'k')) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
   function extractLegalMovesFromText(text) {
     if (!text) return [];
     const legalMoves = chess.moves({ verbose: true });
@@ -2319,7 +2350,7 @@ document.addEventListener('DOMContentLoaded', () => {
         lm.san.toLowerCase() === clean.toLowerCase() ||
         (lm.from + lm.to) === clean.toLowerCase()
       );
-      if (found && !matched.some(x => x.san === found.san)) {
+      if (found && isMoveTacticallySafe(found) && !matched.some(x => x.san === found.san)) {
         matched.push(found);
       }
     }
