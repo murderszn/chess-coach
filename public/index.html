@@ -34,10 +34,20 @@
           </button>
         </div>
 
-        <div class="variation-picker-wrapper">
-          <label for="variation-select" class="picker-label">Preset</label>
+        <!-- Mode Switch: Tabiya Openings vs Tactical Master Tests -->
+        <div class="mode-switch-group">
+          <button class="mode-toggle-btn active" id="btn-mode-tabiya" title="Repertoire Opening Lines & Sparring">
+            📖 Lines
+          </button>
+          <button class="mode-toggle-btn" id="btn-mode-puzzles" title="Tactical Puzzles & Master Tests">
+            🧩 Puzzles
+          </button>
+        </div>
+
+        <div class="variation-picker-wrapper" id="variation-picker-wrapper">
+          <label for="variation-select" class="picker-label" id="picker-label">Preset</label>
           <select id="variation-select" class="preset-dropdown">
-            <!-- Dynamically populated based on active repertoire -->
+            <!-- Dynamically populated based on active repertoire / mode -->
           </select>
         </div>
 
@@ -76,11 +86,41 @@
           <button class="action-chip" id="btn-flip-board" title="Flip Board Perspective">
             🔄 Flip
           </button>
-          <button class="action-chip" id="btn-reset-board" title="Reset Current Tabiya">
+          <button class="action-chip" id="btn-reset-board" title="Reset Current Tabiya / Puzzle">
             ⏮️ Reset
           </button>
           <button class="action-chip" id="fen-badge" title="Click to copy FEN">
             📋 FEN
+          </button>
+        </div>
+      </div>
+
+      <!-- Tactical Puzzle / Master Test Banner (Visible in Puzzle Mode) -->
+      <div class="puzzle-test-banner" id="puzzle-test-banner" style="display: none;">
+        <div class="puzzle-banner-left">
+          <div class="puzzle-tag-row">
+            <span class="puzzle-badge" id="puzzle-theme-badge">🧩 MASTER TEST</span>
+            <span class="puzzle-title-text" id="puzzle-title-text">Sicilian Dragon: ...Rxc3!! Exchange Sacrifice</span>
+          </div>
+          <div class="puzzle-instruction" id="puzzle-instruction">
+            🎯 <strong>Black to Move</strong>: White has castled long and played 12.h4. Shatter White's queenside fortress!
+          </div>
+        </div>
+        <div class="puzzle-banner-right">
+          <div class="puzzle-score-badge" id="puzzle-score-badge" title="Solved Puzzles in Current Repertoire">
+            ⭐ Score: <span id="puzzle-score-text">0/6</span>
+          </div>
+          <button class="puzzle-btn-hint" id="btn-puzzle-hint" title="Ask Coach Vance for a calculation hint">
+            💡 Hint
+          </button>
+          <button class="puzzle-btn-sol" id="btn-puzzle-solution" title="Reveal the master solution">
+            👁️ Solution
+          </button>
+          <button class="puzzle-btn-nav" id="btn-puzzle-prev" title="Previous Puzzle">
+            ⏮️
+          </button>
+          <button class="puzzle-btn-nav" id="btn-puzzle-next" title="Next Puzzle">
+            ⏭️
           </button>
         </div>
       </div>
@@ -116,39 +156,72 @@
           </div>
         </div>
 
-        <div class="board-frame" id="board-frame">
-          <div class="board-grid" id="chessboard">
-            <!-- Rendered 8x8 via JS with high-res vector SVGs -->
+        <!-- Board Play Column with Top & Bottom Captured Material Displays -->
+        <div class="board-column-wrapper" id="board-column-wrapper">
+          
+          <!-- Top Player & Captured Material Strip (Opponent Side) -->
+          <div class="player-material-strip top-strip" id="player-strip-top">
+            <div class="player-info-meta">
+              <div class="player-avatar-mini" id="top-player-avatar">♔</div>
+              <span class="player-name-text" id="top-player-name">GM Vance (White)</span>
+            </div>
+            <div class="captured-pieces-row" id="top-captured-pieces">
+              <!-- Dynamically populated captured piece SVGs -->
+            </div>
+            <div class="material-advantage-pill" id="top-material-diff">
+              <!-- Material diff e.g. +2 -->
+            </div>
           </div>
 
-          <!-- Dynamic SVG Arrow Overlay for Best Moves & Threats -->
-          <svg class="board-arrow-overlay" id="board-arrow-overlay" viewBox="0 0 800 800">
-            <defs>
-              <!-- Arrowhead Markers -->
-              <marker id="arrow-green" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
-                <polygon points="0 0, 6 3, 0 6" fill="#34d399" />
-              </marker>
-              <marker id="arrow-red" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
-                <polygon points="0 0, 6 3, 0 6" fill="#f87171" />
-              </marker>
-              <marker id="arrow-gold" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
-                <polygon points="0 0, 6 3, 0 6" fill="#fbbf24" />
-              </marker>
-              <marker id="arrow-blue" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
-                <polygon points="0 0, 6 3, 0 6" fill="#60a5fa" />
-              </marker>
-            </defs>
-            <g id="arrow-paths-group">
-              <!-- Rendered dynamically by app.js -->
-            </g>
-          </svg>
+          <div class="board-frame" id="board-frame">
+            <div class="board-grid" id="chessboard">
+              <!-- Rendered 8x8 via JS with high-res vector SVGs -->
+            </div>
 
-          <div class="coords-ranks" id="coords-ranks">
-            <span>8</span><span>7</span><span>6</span><span>5</span><span>4</span><span>3</span><span>2</span><span>1</span>
+            <!-- Dynamic SVG Arrow Overlay for Best Moves & Threats -->
+            <svg class="board-arrow-overlay" id="board-arrow-overlay" viewBox="0 0 800 800">
+              <defs>
+                <!-- Arrowhead Markers -->
+                <marker id="arrow-green" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+                  <polygon points="0 0, 6 3, 0 6" fill="#34d399" />
+                </marker>
+                <marker id="arrow-red" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+                  <polygon points="0 0, 6 3, 0 6" fill="#f87171" />
+                </marker>
+                <marker id="arrow-gold" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+                  <polygon points="0 0, 6 3, 0 6" fill="#fbbf24" />
+                </marker>
+                <marker id="arrow-blue" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+                  <polygon points="0 0, 6 3, 0 6" fill="#60a5fa" />
+                </marker>
+              </defs>
+              <g id="arrow-paths-group">
+                <!-- Rendered dynamically by app.js -->
+              </g>
+            </svg>
+
+            <div class="coords-ranks" id="coords-ranks">
+              <span>8</span><span>7</span><span>6</span><span>5</span><span>4</span><span>3</span><span>2</span><span>1</span>
+            </div>
+            <div class="coords-files" id="coords-files">
+              <span>a</span><span>b</span><span>c</span><span>d</span><span>e</span><span>f</span><span>g</span><span>h</span>
+            </div>
           </div>
-          <div class="coords-files" id="coords-files">
-            <span>a</span><span>b</span><span>c</span><span>d</span><span>e</span><span>f</span><span>g</span><span>h</span>
+
+          <!-- Bottom Player & Captured Material Strip (Player Side) -->
+          <div class="player-material-strip bottom-strip" id="player-strip-bottom">
+            <div class="player-info-meta">
+              <div class="player-avatar-mini" id="bottom-player-avatar">♚</div>
+              <span class="player-name-text" id="bottom-player-name">Student (Black)</span>
+            </div>
+            <div class="captured-pieces-row" id="bottom-captured-pieces">
+              <!-- Dynamically populated captured piece SVGs -->
+            </div>
+            <div class="material-advantage-pill" id="bottom-material-diff">
+              <!-- Material diff e.g. +3 -->
+            </div>
           </div>
+
         </div>
       </div>
 
@@ -166,9 +239,14 @@
           <!-- Dynamically populated SAN moves -->
         </div>
 
+        <!-- Explain Any Move Feature Chip -->
+        <button class="btn-explain-move" id="btn-explain-move" title="Ask Coach Vance to explain this exact move's strategic rationale">
+          <span>💡 Explain Move</span>
+        </button>
+
         <!-- Direct Ask Coach Button -->
         <button class="btn-ask-coach" id="btn-consult-coach" title="Send board position to Coach Vance">
-          <span>💬 Ask Coach Vance</span>
+          <span>💬 Ask Coach</span>
         </button>
       </div>
 

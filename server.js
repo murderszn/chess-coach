@@ -17,15 +17,19 @@ app.get('/favicon.ico', (req, res) => res.sendFile(path.join(__dirname, 'public'
 function buildSystemPrompt(boardContext) {
   let boardInfo = '';
   const repertoire = boardContext?.repertoire || 'black_dragon';
+  const mode = boardContext?.mode || 'tabiya';
+  const moveBeingExplained = boardContext?.explaining_move || null;
 
   if (boardContext) {
     boardInfo = `
 [CURRENT LIVE BOARD STATE]:
+- Active Mode: ${mode === 'puzzle' ? 'TACTICAL PUZZLE / MASTER TEST' : 'REPERTOIRE TABIYA & SPARRING'}
 - Active Repertoire: ${repertoire === 'white_attack' ? 'WHITE: Aggressive 1.e4 Openings (Fried Liver, Evans Gambit, Grand Prix, Smith-Morra)' : 'BLACK: Sicilian Dragon Mastery (Yugoslav Attack Defense)'}
-- Tabiya / Line: ${boardContext.preset || 'Main Line'}
+- Line / Puzzle: ${boardContext.preset || 'Main Line'}
 - FEN: ${boardContext.fen || 'N/A'}
 - Full Move Sequence: ${boardContext.san_history || 'N/A'}
 - Last Move Played: ${boardContext.last_move || 'None'}
+${moveBeingExplained ? `- Move Being Analyzed: ${moveBeingExplained}` : ''}
 - Active Turn: ${boardContext.turn || 'White'} to move
 - In Check: ${boardContext.is_check ? 'YES - KING IN CHECK!' : 'No'}
 - Game Over: ${boardContext.is_game_over ? (boardContext.is_checkmate ? 'CHECKMATE' : 'DRAW') : 'Active Game'}
@@ -52,6 +56,22 @@ function buildSystemPrompt(boardContext) {
    - The Outpost on c4: Black's knight on c4 forks queen/bishop and pressures b2.`;
   }
 
+  let modeGuidance = '';
+  if (mode === 'puzzle') {
+    modeGuidance = `
+4. TACTICAL PUZZLE COACHING:
+   - If the student asks for a hint, do NOT reveal the exact move immediately. Give a high-impact tactical hint highlighting weak squares, pins, undefended pieces, or thematic sacrifices (e.g. "Look at White's c3 knight and your dark-square bishop", or "Notice the f7 square defended only by the king").
+   - When a puzzle is solved, enthusiastically explain the concrete calculation and why alternative defenses fail.`;
+  } else if (moveBeingExplained) {
+    modeGuidance = `
+4. MOVE EXPLANATION SPECIALIST:
+   - When explaining ${moveBeingExplained}, provide:
+     a) Strategic Purpose & Concrete Threat: What does this move accomplish immediately?
+     b) Pawn Structure & Piece Coordination: How does it alter squares, lines of sight, or files?
+     c) Tactical Nuance: Why is this better than natural alternatives?
+     d) Grandmaster Rule of Thumb: A memorable takeaway for the student's competitive play.`;
+  }
+
   return `You are Grandmaster Julian Vance, a world-renowned chess tactician and high-energy master coach.
 You are in an active coaching session with your dedicated student over iMessage.
 
@@ -64,7 +84,8 @@ ${strategicThemes}
    - Speak directly, constructively, sharply, and passionately like a top GM mentor in iMessage.
    - Use standard chess notation (e.g., 6.Nxf7!, 7.Qf3+, ...Rxc3, 12...Nc4, 4.Ng5).
    - Feel free to use chess emojis (♟️, ♞, ♛, ⚔️, 🔥, 🍗) naturally.
-   - Keep answers punchy, vivid, and deeply educational. Challenge the student with candidate moves.`;
+   - Keep answers punchy, vivid, and deeply educational. Challenge the student with candidate moves.
+${modeGuidance}`;
 }
 
 // Health and model discovery
