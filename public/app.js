@@ -1,32 +1,29 @@
 /**
- * Grandmaster Chess Coach (Julian Vance) — Sicilian Dragon Mastery
- * Full Game Gameplay Engine, Web Audio SFX, Dynamic Arrows, Live Eval & Auto-Opponent
+ * Grandmaster Chess Coach (Julian Vance) — Multi-Repertoire Mastery
+ * Supports Black (Sicilian Dragon / Dark Theme) & White (Aggressive 1.e4 & Fried Liver / Light Theme)
  */
 
 document.addEventListener('DOMContentLoaded', () => {
   // Initialize Chess Engine
   const chess = new Chess();
-  let boardOrientation = 'black'; // Black perspective for Dragon players
+  let currentRepertoire = 'black_dragon'; // 'black_dragon' or 'white_attack'
+  let boardOrientation = 'black';
   let selectedSquare = null;
   let legalMovesForSelected = [];
   let moveHistory = [];
   let currentMoveIndex = -1;
   let isStreaming = false;
   let arrowsEnabled = true;
-  let autoPlayOpponent = true; // Auto-play White's response
+  let autoPlayOpponent = true;
   let soundEnabled = true;
 
   // ==========================================================
-  // Web Audio Synthesizer for Tactile Piece & Game Audio
+  // Web Audio Synthesizer
   // ==========================================================
   let audioCtx = null;
   function getAudioContext() {
-    if (!audioCtx) {
-      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    }
-    if (audioCtx.state === 'suspended') {
-      audioCtx.resume();
-    }
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
     return audioCtx;
   }
 
@@ -50,14 +47,13 @@ document.addEventListener('DOMContentLoaded', () => {
         osc.stop(now + 0.12);
       } else if (type === 'check') {
         osc.type = 'sine';
-        osc.frequency.setValueAtTime(587, now); // D5
-        osc.frequency.exponentialRampToValueAtTime(880, now + 0.16); // A5
+        osc.frequency.setValueAtTime(587, now);
+        osc.frequency.exponentialRampToValueAtTime(880, now + 0.16);
         gain.gain.setValueAtTime(0.25, now);
         gain.gain.exponentialRampToValueAtTime(0.01, now + 0.16);
         osc.start(now);
         osc.stop(now + 0.16);
       } else if (type === 'gameover') {
-        // Victory Fanfare Chord
         [440, 554, 659, 880].forEach((freq, i) => {
           const chordOsc = ctx.createOscillator();
           const chordGain = ctx.createGain();
@@ -71,7 +67,6 @@ document.addEventListener('DOMContentLoaded', () => {
           chordOsc.stop(now + 0.6);
         });
       } else {
-        // Standard tactile piece placement
         osc.type = 'sine';
         osc.frequency.setValueAtTime(420, now);
         osc.frequency.exponentialRampToValueAtTime(210, now + 0.08);
@@ -84,121 +79,156 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ==========================================================
-  // Comprehensive Opening Book for Standard Game & Dragon Lines
+  // Repertoire Presets (Black Dragon vs White 1.e4 Aggression)
   // ==========================================================
-  const FULL_OPENING_BOOK = {
-    // Start of game
-    "": "e4",
-    // After 1...
+  const REPERTOIRE_PRESETS = {
+    'black_dragon': {
+      'yugoslav_12h4': {
+        name: '🐉 Yugoslav 9.Bc4 Main Line (12.h4)',
+        moves: ['e4', 'c5', 'Nf3', 'd6', 'd4', 'cxd4', 'Nxd4', 'Nf6', 'Nc3', 'g6', 'Be3', 'Bg7', 'f3', 'O-O', 'Qd2', 'Nc6', 'Bc4', 'Bd7', 'O-O-O', 'Rc8', 'Bb3', 'Ne5', 'h4'],
+        stats: { total: '3,840', whitePct: 45, drawPct: 27, blackPct: 28 }
+      },
+      'exchange_sac': {
+        name: '💥 Thematic ...Rxc3 Sac Setup',
+        moves: ['e4', 'c5', 'Nf3', 'd6', 'd4', 'cxd4', 'Nxd4', 'Nf6', 'Nc3', 'g6', 'Be3', 'Bg7', 'f3', 'O-O', 'Qd2', 'Nc6', 'Bc4', 'Bd7', 'O-O-O', 'Rc8', 'Bb3', 'Ne5', 'h4', 'Nc4', 'Bxc4', 'Rxc4', 'h5', 'Nxh5', 'g4', 'Nf6', 'Nde2', 'Qa5'],
+        stats: { total: '1,420', whitePct: 38, drawPct: 24, blackPct: 38 }
+      },
+      'soltis_h5': {
+        name: '🛡️ Soltis Variation (12...h5)',
+        moves: ['e4', 'c5', 'Nf3', 'd6', 'd4', 'cxd4', 'Nxd4', 'Nf6', 'Nc3', 'g6', 'Be3', 'Bg7', 'f3', 'O-O', 'Qd2', 'Nc6', 'Bc4', 'Bd7', 'O-O-O', 'Rc8', 'Bb3', 'Ne5', 'h4', 'h5'],
+        stats: { total: '960', whitePct: 44, drawPct: 30, blackPct: 26 }
+      },
+      'yugoslav_d5': {
+        name: '⚡ Yugoslav 9.0-0-0 d5! Strike',
+        moves: ['e4', 'c5', 'Nf3', 'd6', 'd4', 'cxd4', 'Nxd4', 'Nf6', 'Nc3', 'g6', 'Be3', 'Bg7', 'f3', 'O-O', 'Qd2', 'Nc6', 'O-O-O', 'd5'],
+        stats: { total: '2,150', whitePct: 41, drawPct: 32, blackPct: 27 }
+      },
+      'chinese_dragon': {
+        name: '🏮 Chinese Dragon (10...Rb8)',
+        moves: ['e4', 'c5', 'Nf3', 'd6', 'd4', 'cxd4', 'Nxd4', 'Nf6', 'Nc3', 'g6', 'Be3', 'Bg7', 'f3', 'O-O', 'Qd2', 'Nc6', 'Bc4', 'Bd7', 'O-O-O', 'Rb8'],
+        stats: { total: '830', whitePct: 46, drawPct: 24, blackPct: 30 }
+      },
+      'levenfish': {
+        name: '🗡️ Levenfish Attack (6.f4)',
+        moves: ['e4', 'c5', 'Nf3', 'd6', 'd4', 'cxd4', 'Nxd4', 'Nf6', 'Nc3', 'g6', 'f4'],
+        stats: { total: '1,120', whitePct: 48, drawPct: 22, blackPct: 30 }
+      },
+      'classical': {
+        name: '♟️ Classical Dragon (6.Be2)',
+        moves: ['e4', 'c5', 'Nf3', 'd6', 'd4', 'cxd4', 'Nxd4', 'Nf6', 'Nc3', 'g6', 'Be2', 'Bg7', 'Be3', 'O-O', 'O-O'],
+        stats: { total: '4,500', whitePct: 43, drawPct: 35, blackPct: 22 }
+      },
+      'initial': {
+        name: '🏁 Play as Black vs Computer (1.e4)',
+        moves: [],
+        stats: { total: '12,500,000+', whitePct: 38, drawPct: 34, blackPct: 28 }
+      }
+    },
+    'white_attack': {
+      'fried_liver_sac': {
+        name: '🍗 Fried Liver Attack (6.Nxf7!?)',
+        moves: ['e4', 'e5', 'Nf3', 'Nc6', 'Bc4', 'Nf6', 'Ng5', 'd5', 'exd5', 'Nxd5', 'Nxf7', 'Kxf7', 'Qf3+', 'Ke6', 'Nc3'],
+        stats: { total: '18,500', whitePct: 62, drawPct: 12, blackPct: 26 }
+      },
+      'two_knights_4ng5': {
+        name: '🎯 Italian: Two Knights (4.Ng5)',
+        moves: ['e4', 'e5', 'Nf3', 'Nc6', 'Bc4', 'Nf6', 'Ng5', 'd5', 'exd5', 'Na5', 'Bb5+', 'c6', 'dxc6', 'bxc6', 'Be2'],
+        stats: { total: '24,000', whitePct: 54, drawPct: 22, blackPct: 24 }
+      },
+      'evans_gambit': {
+        name: '⛵ Evans Gambit Accepted (4.b4!?)',
+        moves: ['e4', 'e5', 'Nf3', 'Nc6', 'Bc4', 'Bc5', 'b4', 'Bxb4', 'c3', 'Ba5', 'd4'],
+        stats: { total: '12,400', whitePct: 56, drawPct: 18, blackPct: 26 }
+      },
+      'grand_prix_sicilian': {
+        name: '🏎️ Grand Prix Attack vs Sicilian (3.f4)',
+        moves: ['e4', 'c5', 'Nc3', 'Nc6', 'f4', 'g6', 'Nf3', 'Bg7', 'Bc4', 'e6', 'f5'],
+        stats: { total: '9,800', whitePct: 53, drawPct: 21, blackPct: 26 }
+      },
+      'smith_morra_gambit': {
+        name: '💣 Smith-Morra Gambit vs Sicilian (3.c3!?)',
+        moves: ['e4', 'c5', 'd4', 'cxd4', 'c3', 'dxc3', 'Nxc3', 'Nc6', 'Nf3', 'd6', 'Bc4'],
+        stats: { total: '14,200', whitePct: 58, drawPct: 16, blackPct: 26 }
+      },
+      'kings_gambit': {
+        name: "👑 King's Gambit Accepted (2.f4!?)",
+        moves: ['e4', 'e5', 'f4', 'exf4', 'Nf3', 'g5', 'Bc4', 'g4', 'O-O'],
+        stats: { total: '16,700', whitePct: 55, drawPct: 15, blackPct: 30 }
+      },
+      'white_start': {
+        name: '🏁 Play as White (Start 1.e4 vs Auto-Black)',
+        moves: [],
+        stats: { total: '12,500,000+', whitePct: 38, drawPct: 34, blackPct: 28 }
+      }
+    }
+  };
+
+  // Quick Tactic Chips for each repertoire
+  const REPERTOIRE_TACTICS = {
+    'black_dragon': [
+      { label: '⚔️ 12...Nc4 Outpost', msg: "I played 12...Nc4 forcing White's bishop off b3. How does Black handle 13.Bxc4 Rxc4 14.h5 Nxh5 15.g4 Nf6?" },
+      { label: '🛡️ 12...h5 Soltis', msg: "I wanted to play 12...h5 (Soltis Variation) to clamp down the h-file. What is White's most dangerous counter?" },
+      { label: '💥 ...Rxc3 Sac', msg: "I want to play the thematic exchange sacrifice ...Rxc3! What are the exact conditions where giving up the rook on c3 is completely winning?" },
+      { label: '⚡ 9.0-0-0 d5! Strike', msg: "What if White plays 9.0-0-0 without Bc4? Can I strike immediately with 9...d5?" }
+    ],
+    'white_attack': [
+      { label: '🍗 6.Nxf7! Fried Liver', msg: "I sacrificed my knight on f7 (6.Nxf7!). How do I maintain maximum tactical pressure against Black's exposed king on e6?" },
+      { label: '🎯 4.Ng5 Italian Attack', msg: "In the Italian Two Knights (4.Ng5), how do I punish Black if they play 4...Bc5 (Traxler) or 5...Nxd5?" },
+      { label: '⛵ 4.b4 Evans Gambit', msg: "I gave up the b4 pawn in the Evans Gambit for tempo. What are the key attacking paths down the c and d files?" },
+      { label: '💣 3.c3 Smith-Morra', msg: "In the Smith-Morra Gambit vs the Sicilian, how do I coordinate my rooks on c1 and d1 for a rapid kingside mating net?" }
+    ]
+  };
+
+  // Comprehensive Book Responses
+  const OPENING_BOOK = {
+    // White responses vs Black moves (when playing Black)
     "1.e4 c5": "Nf3",
-    "1.e4 e5": "Nf3",
-    "1.e4 c6": "d4",
-    "1.e4 e6": "d4",
-    "1.e4 d6": "d4",
-    // After 2...
     "1.e4 c5 2.Nf3 d6": "d4",
-    "1.e4 c5 2.Nf3 Nc6": "d4",
-    "1.e4 c5 2.Nf3 e6": "d4",
-    // After 3...
     "1.e4 c5 2.Nf3 d6 3.d4 cxd4": "Nxd4",
-    "1.e4 c5 2.Nf3 Nc6 3.d4 cxd4": "Nxd4",
-    // After 4...
     "1.e4 c5 2.Nf3 d6 3.d4 cxd4 4.Nxd4 Nf6": "Nc3",
-    // After 5...
     "1.e4 c5 2.Nf3 d6 3.d4 cxd4 4.Nxd4 Nf6 5.Nc3 g6": "Be3",
-    "1.e4 c5 2.Nf3 d6 3.d4 cxd4 4.Nxd4 Nf6 5.Nc3 a6": "Be3", // Najdorf
-    // After 6...
     "1.e4 c5 2.Nf3 d6 3.d4 cxd4 4.Nxd4 Nf6 5.Nc3 g6 6.Be3 Bg7": "f3",
-    // After 7...
     "1.e4 c5 2.Nf3 d6 3.d4 cxd4 4.Nxd4 Nf6 5.Nc3 g6 6.Be3 Bg7 7.f3 O-O": "Qd2",
-    "1.e4 c5 2.Nf3 d6 3.d4 cxd4 4.Nxd4 Nf6 5.Nc3 g6 6.Be3 Bg7 7.f3 Nc6": "Qd2",
-    // After 8...
     "1.e4 c5 2.Nf3 d6 3.d4 cxd4 4.Nxd4 Nf6 5.Nc3 g6 6.Be3 Bg7 7.f3 O-O 8.Qd2 Nc6": "Bc4",
-    // After 9...
     "1.e4 c5 2.Nf3 d6 3.d4 cxd4 4.Nxd4 Nf6 5.Nc3 g6 6.Be3 Bg7 7.f3 O-O 8.Qd2 Nc6 9.Bc4 Bd7": "O-O-O",
-    // After 10...
     "1.e4 c5 2.Nf3 d6 3.d4 cxd4 4.Nxd4 Nf6 5.Nc3 g6 6.Be3 Bg7 7.f3 O-O 8.Qd2 Nc6 9.Bc4 Bd7 10.O-O-O Rc8": "Bb3",
-    // After 11...
     "1.e4 c5 2.Nf3 d6 3.d4 cxd4 4.Nxd4 Nf6 5.Nc3 g6 6.Be3 Bg7 7.f3 O-O 8.Qd2 Nc6 9.Bc4 Bd7 10.O-O-O Rc8 11.Bb3 Ne5": "h4",
-    // Tactical responses in Yugoslav
     "Nc4": "Bxc4",
     "h5": "Bg5",
     "Rxc3": "bxc3",
     "Qa5": "Kb1",
     "d5": "exd5",
-    "a6": "h5",
-    "b6": "h5",
-    "Re8": "h5",
-    "Qc7": "Kb1",
-    "Rxc4": "h5",
-    "Nxh5": "g4",
-    "Nf6": "Nde2",
-    "Rfc8": "Bh6"
-  };
 
-  // Sicilian Dragon Tabiya Presets with Master Stats & Tactical Arrows
-  const TABIYA_PRESETS = {
-    'yugoslav_12h4': {
-      name: 'Yugoslav 9.Bc4 Main Line (12.h4)',
-      moves: ['e4', 'c5', 'Nf3', 'd6', 'd4', 'cxd4', 'Nxd4', 'Nf6', 'Nc3', 'g6', 'Be3', 'Bg7', 'f3', 'O-O', 'Qd2', 'Nc6', 'Bc4', 'Bd7', 'O-O-O', 'Rc8', 'Bb3', 'Ne5', 'h4'],
-      turnDesc: 'Black to move (12...Nc4, 12...h5, or 12...Qa5)',
-      stats: { total: '3,840', whitePct: 45, drawPct: 27, blackPct: 28 }
-    },
-    'exchange_sac': {
-      name: 'Thematic ...Rxc3 Exchange Sac Setup',
-      moves: ['e4', 'c5', 'Nf3', 'd6', 'd4', 'cxd4', 'Nxd4', 'Nf6', 'Nc3', 'g6', 'Be3', 'Bg7', 'f3', 'O-O', 'Qd2', 'Nc6', 'Bc4', 'Bd7', 'O-O-O', 'Rc8', 'Bb3', 'Ne5', 'h4', 'Nc4', 'Bxc4', 'Rxc4', 'h5', 'Nxh5', 'g4', 'Nf6', 'Nde2', 'Qa5'],
-      turnDesc: 'Black to move (Preparing ...Rfc8 and ...Rxc3!)',
-      stats: { total: '1,420', whitePct: 38, drawPct: 24, blackPct: 38 }
-    },
-    'soltis_h5': {
-      name: 'Soltis Variation (12...h5)',
-      moves: ['e4', 'c5', 'Nf3', 'd6', 'd4', 'cxd4', 'Nxd4', 'Nf6', 'Nc3', 'g6', 'Be3', 'Bg7', 'f3', 'O-O', 'Qd2', 'Nc6', 'Bc4', 'Bd7', 'O-O-O', 'Rc8', 'Bb3', 'Ne5', 'h4', 'h5'],
-      turnDesc: 'White to move (13.Bg5 or 13.Kb1)',
-      stats: { total: '960', whitePct: 44, drawPct: 30, blackPct: 26 }
-    },
-    'yugoslav_d5': {
-      name: 'Yugoslav 9.0-0-0 d5! Central Strike',
-      moves: ['e4', 'c5', 'Nf3', 'd6', 'd4', 'cxd4', 'Nxd4', 'Nf6', 'Nc3', 'g6', 'Be3', 'Bg7', 'f3', 'O-O', 'Qd2', 'Nc6', 'O-O-O', 'd5'],
-      turnDesc: 'White to move (10.exd5 or 10.Qe1)',
-      stats: { total: '2,150', whitePct: 41, drawPct: 32, blackPct: 27 }
-    },
-    'chinese_dragon': {
-      name: 'Chinese Dragon (10...Rb8)',
-      moves: ['e4', 'c5', 'Nf3', 'd6', 'd4', 'cxd4', 'Nxd4', 'Nf6', 'Nc3', 'g6', 'Be3', 'Bg7', 'f3', 'O-O', 'Qd2', 'Nc6', 'Bc4', 'Bd7', 'O-O-O', 'Rb8'],
-      turnDesc: 'White to move (Preparing ...b5 pawn storm)',
-      stats: { total: '830', whitePct: 46, drawPct: 24, blackPct: 30 }
-    },
-    'levenfish': {
-      name: 'Levenfish Attack (6.f4)',
-      moves: ['e4', 'c5', 'Nf3', 'd6', 'd4', 'cxd4', 'Nxd4', 'Nf6', 'Nc3', 'g6', 'f4'],
-      turnDesc: 'Black to move (6...Nc6 or 6...Bg7)',
-      stats: { total: '1,120', whitePct: 48, drawPct: 22, blackPct: 30 }
-    },
-    'classical': {
-      name: 'Classical Dragon (6.Be2)',
-      moves: ['e4', 'c5', 'Nf3', 'd6', 'd4', 'cxd4', 'Nxd4', 'Nf6', 'Nc3', 'g6', 'Be2', 'Bg7', 'Be3', 'O-O', 'O-O'],
-      turnDesc: 'Black to move (8...Nc6)',
-      stats: { total: '4,500', whitePct: 43, drawPct: 35, blackPct: 22 }
-    },
-    'initial': {
-      name: 'Standard Starting Position (1.e4)',
-      moves: [],
-      turnDesc: 'White to move (1.e4)',
-      stats: { total: '12,500,000+', whitePct: 38, drawPct: 34, blackPct: 28 }
-    }
+    // Black responses vs White moves (when user plays as White)
+    "1.e4": "e5",
+    "1.e4 e5 2.Nf3": "Nc6",
+    "1.e4 e5 2.Nf3 Nc6 3.Bc4": "Nf6", // Two Knights Defense
+    "1.e4 e5 2.Nf3 Nc6 3.Bc4 Nf6 4.Ng5": "d5",
+    "1.e4 e5 2.Nf3 Nc6 3.Bc4 Nf6 4.Ng5 d5 5.exd5": "Nxd5", // Fried Liver trigger
+    "1.e4 e5 2.Nf3 Nc6 3.Bc4 Nf6 4.Ng5 d5 5.exd5 Nxd5 6.Nxf7": "Kxf7",
+    "1.e4 e5 2.Nf3 Nc6 3.Bc4 Nf6 4.Ng5 d5 5.exd5 Nxd5 6.Nxf7 Kxf7 7.Qf3+": "Ke6",
+    "1.e4 e5 2.Nf3 Nc6 3.Bc4 Nf6 4.Ng5 d5 5.exd5 Nxd5 6.Nxf7 Kxf7 7.Qf3+ Ke6 8.Nc3": "Ncb4",
+    // Evans Gambit
+    "1.e4 e5 2.Nf3 Nc6 3.Bc4 Bc5": "b4",
+    "1.e4 e5 2.Nf3 Nc6 3.Bc4 Bc5 4.b4": "Bxb4",
+    "1.e4 e5 2.Nf3 Nc6 3.Bc4 Bc5 4.b4 Bxb4 5.c3": "Ba5",
+    "1.e4 e5 2.Nf3 Nc6 3.Bc4 Bc5 4.b4 Bxb4 5.c3 Ba5 6.d4": "exd4"
   };
 
   // Conversation history
   const conversationHistory = [
     {
       role: 'assistant',
-      content: "Welcome to Sicilian Dragon Mastery! We have the critical Yugoslav Attack 12.h4 tabiya loaded. Auto-Reply is ON: when you make a move for Black, White will automatically play the most tested Grandmaster reply, and I will coach you through the calculations! Or switch to 'Standard Starting Position' to play a complete game from move 1! ♟️"
+      content: "Welcome to Grandmaster Coaching! Switch between your Black Sicilian Dragon repertoire (Dark Theme) and your White Aggressive 1.e4 / Fried Liver repertoire (Light Theme) at any time. When you play your moves on the board, the computer will automatically respond, and I will coach you on winning calculations! ♟️"
     }
   ];
 
   // DOM Elements
   const chessboardEl = document.getElementById('chessboard');
   const variationSelect = document.getElementById('variation-select');
+  const btnRepBlack = document.getElementById('btn-rep-black');
+  const btnRepWhite = document.getElementById('btn-rep-white');
+  const tacticsChipsContainer = document.getElementById('tactics-chips-container');
   const turnDot = document.getElementById('turn-dot');
   const turnText = document.getElementById('turn-text');
   const fenBadge = document.getElementById('fen-badge');
@@ -247,7 +277,58 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnResetSession = document.getElementById('btn-reset-session');
 
   // ==========================================================
-  // 1. Board Evaluation & Move Classification
+  // 1. Repertoire & Theme Switcher
+  // ==========================================================
+  function setRepertoire(repKey) {
+    currentRepertoire = repKey;
+
+    if (repKey === 'white_attack') {
+      document.body.classList.add('light-theme');
+      btnRepWhite.classList.add('active');
+      btnRepBlack.classList.remove('active');
+      boardOrientation = 'white';
+    } else {
+      document.body.classList.remove('light-theme');
+      btnRepBlack.classList.add('active');
+      btnRepWhite.classList.remove('active');
+      boardOrientation = 'black';
+    }
+
+    // Populate Presets dropdown
+    variationSelect.innerHTML = '';
+    const presets = REPERTOIRE_PRESETS[repKey];
+    Object.keys(presets).forEach(key => {
+      const opt = document.createElement('option');
+      opt.value = key;
+      opt.textContent = presets[key].name;
+      variationSelect.appendChild(opt);
+    });
+
+    // Populate Quick Tactics chips
+    tacticsChipsContainer.innerHTML = '';
+    const tactics = REPERTOIRE_TACTICS[repKey] || [];
+    tactics.forEach(t => {
+      const pill = document.createElement('button');
+      pill.className = 'tactic-pill';
+      pill.setAttribute('data-msg', t.msg);
+      pill.textContent = t.label;
+      pill.addEventListener('click', () => {
+        chatInput.value = t.msg;
+        handleSendMessage();
+      });
+      tacticsChipsContainer.appendChild(pill);
+    });
+
+    // Load first preset for this repertoire
+    const defaultPresetKey = Object.keys(presets)[0];
+    loadPreset(defaultPresetKey, true);
+  }
+
+  btnRepBlack.addEventListener('click', () => setRepertoire('black_dragon'));
+  btnRepWhite.addEventListener('click', () => setRepertoire('white_attack'));
+
+  // ==========================================================
+  // 2. Board Evaluation & Move Classification
   // ==========================================================
   function calculateEvaluation() {
     let score = 0;
@@ -268,16 +349,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const g7Piece = chess.get('g7');
     if (g7Piece && g7Piece.type === 'b' && g7Piece.color === 'b') score -= 0.35;
 
-    const c4Piece = chess.get('c4');
-    if (c4Piece && c4Piece.type === 'n' && c4Piece.color === 'b') score -= 0.5;
+    const c4Knight = chess.get('c4');
+    if (c4Knight && c4Knight.type === 'n' && c4Knight.color === 'b') score -= 0.5;
 
-    const h5Piece = chess.get('h5');
-    if (h5Piece && h5Piece.type === 'p' && h5Piece.color === 'w') score += 0.45;
+    // White attacking f7 pressure
+    const g5Knight = chess.get('g5');
+    const c4Bishop = chess.get('c4');
+    if (g5Knight && g5Knight.color === 'w' && c4Bishop && c4Bishop.color === 'w') {
+      score += 0.8; // White battery on f7
+    }
 
-    const c8Piece = chess.get('c8');
-    const c4Rook = chess.get('c4');
-    if ((c8Piece && c8Piece.type === 'r' && c8Piece.color === 'b') || (c4Rook && c4Rook.type === 'r' && c4Rook.color === 'b')) {
-      score -= 0.25;
+    // Black exposed king on e6 (Fried Liver)
+    const e6King = chess.get('e6');
+    if (e6King && e6King.type === 'k' && e6King.color === 'b') {
+      score += 1.8; // Exposed Black King
     }
 
     return score;
@@ -302,11 +387,11 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    if (san.includes('Rxc3') || san.includes('c3')) {
-      setMoveClassification('brilliant', '!!', 'Brilliant Sac');
-    } else if (san === 'Nc4' || san === 'h5' || san === 'd5') {
+    if (san.includes('Nxf7') || san.includes('Rxc3') || san.includes('b4')) {
+      setMoveClassification('brilliant', '!!', 'Brilliant Attack');
+    } else if (['Ng5', 'Qf3+', 'Nc4', 'h5', 'd5', 'f4', 'c3'].some(m => san.includes(m))) {
       setMoveClassification('great', '!', 'Great Move');
-    } else if (['Bxc4', 'Bg5', 'Kb1', 'Qa5', 'Bb3', 'e4', 'Nf3', 'd4', 'Nxd4', 'Nc3', 'Be3', 'f3', 'Qd2', 'O-O-O'].includes(san)) {
+    } else if (['Bc4', 'Nf3', 'd4', 'e4', 'Bxc4', 'Bg5', 'Kb1', 'Qa5'].includes(san)) {
       setMoveClassification('best', '⭐', 'Best Move');
     } else {
       setMoveClassification('book', '✓', 'Book Move');
@@ -328,10 +413,12 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
+    const presets = REPERTOIRE_PRESETS[currentRepertoire];
     const lastMoveSan = currentMoveIndex >= 0 ? moveHistory[currentMoveIndex]?.san : 'None';
-    const activePreset = TABIYA_PRESETS[variationSelect.value]?.name || 'Sicilian Dragon';
+    const activePreset = presets[variationSelect.value]?.name || 'Opening';
 
     return {
+      repertoire: currentRepertoire,
       fen: chess.fen(),
       preset: activePreset,
       san_history: sanStr.trim(),
@@ -345,7 +432,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ==========================================================
-  // 2. White Auto-Opponent & Full Game Play Engine
+  // 3. Auto-Opponent Response Engine
   // ==========================================================
   function getMoveHistorySanString() {
     let s = '';
@@ -359,19 +446,19 @@ document.addEventListener('DOMContentLoaded', () => {
     return s.trim();
   }
 
-  function pickWhiteBestMove(lastBlackSan) {
+  function pickAutoOpponentMove(lastPlayerSan) {
     const fullHistory = getMoveHistorySanString();
 
-    // 1. Check exact full move sequence opening book
-    if (FULL_OPENING_BOOK[fullHistory]) {
-      const bookSan = FULL_OPENING_BOOK[fullHistory];
+    // 1. Check exact opening book sequence
+    if (OPENING_BOOK[fullHistory]) {
+      const bookSan = OPENING_BOOK[fullHistory];
       const valid = chess.moves().find(m => m === bookSan || m.replace(/[+#]/, '') === bookSan);
       if (valid) return valid;
     }
 
-    // 2. Check tactical response opening book by last Black move
-    if (lastBlackSan && FULL_OPENING_BOOK[lastBlackSan]) {
-      const bookSan = FULL_OPENING_BOOK[lastBlackSan];
+    // 2. Check tactical response opening book
+    if (lastPlayerSan && OPENING_BOOK[lastPlayerSan]) {
+      const bookSan = OPENING_BOOK[lastPlayerSan];
       const valid = chess.moves().find(m => m === bookSan || m.replace(/[+#]/, '') === bookSan);
       if (valid) return valid;
     }
@@ -380,15 +467,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const legalMoves = chess.moves({ verbose: true });
     if (legalMoves.length === 0) return null;
 
+    const currentTurn = chess.turn();
     let bestMove = legalMoves[0];
-    let bestScore = -9999;
+    let bestScore = currentTurn === 'w' ? -9999 : 9999;
 
     for (const move of legalMoves) {
       chess.move(move);
       const score = calculateEvaluation();
       chess.undo();
 
-      if (score > bestScore) {
+      if (currentTurn === 'w' && score > bestScore) {
+        bestScore = score;
+        bestMove = move;
+      } else if (currentTurn === 'b' && score < bestScore) {
         bestScore = score;
         bestMove = move;
       }
@@ -397,20 +488,22 @@ document.addEventListener('DOMContentLoaded', () => {
     return bestMove.san;
   }
 
-  function triggerWhiteAutoResponse(lastBlackSan) {
-    if (!autoPlayOpponent || chess.turn() !== 'w' || chess.game_over()) return;
+  function triggerAutoOpponentResponse(lastPlayerSan) {
+    const isPlayerTurn = (currentRepertoire === 'black_dragon' && chess.turn() === 'b') || (currentRepertoire === 'white_attack' && chess.turn() === 'w');
+    if (!autoPlayOpponent || isPlayerTurn || chess.game_over()) return;
 
-    turnText.textContent = 'White is calculating...';
-    turnDot.className = 'turn-dot white';
+    const oppName = chess.turn() === 'w' ? 'White' : 'Black';
+    turnText.textContent = `${oppName} is calculating...`;
+    turnDot.className = `turn-dot ${chess.turn() === 'w' ? 'white' : 'black'}`;
 
     setTimeout(() => {
-      if (chess.turn() !== 'w') return;
+      if (isPlayerTurn) return;
 
-      const whiteMoveSan = pickWhiteBestMove(lastBlackSan);
-      if (!whiteMoveSan) return;
+      const oppMoveSan = pickAutoOpponentMove(lastPlayerSan);
+      if (!oppMoveSan) return;
 
-      const isCapture = chess.get(whiteMoveSan) || whiteMoveSan.includes('x');
-      const moveObj = chess.move(whiteMoveSan);
+      const isCapture = chess.get(oppMoveSan) || oppMoveSan.includes('x');
+      const moveObj = chess.move(oppMoveSan);
 
       if (moveObj) {
         moveHistory.push({
@@ -437,11 +530,11 @@ document.addEventListener('DOMContentLoaded', () => {
         updateMasterStats();
         checkGameOverStatus();
 
-        // Coach Vance automatic coaching breakdown
         if (!isStreaming && !chess.game_over()) {
-          const prompt = lastBlackSan 
-            ? `The student played "${lastBlackSan}" for Black, and White responded with "${moveObj.san}" (FEN: ${chess.fen()}). Provide sharp, constructive grandmaster commentary on White's move, explain Black's tactical choices next, and ask the student for their move!`
-            : `A new game just began and White opened with 1.e4 (FEN: ${chess.fen()}). Welcome the student to the game and guide them into the Sicilian Dragon with 1...c5!`;
+          const userSide = currentRepertoire === 'white_attack' ? 'White' : 'Black';
+          const prompt = lastPlayerSan 
+            ? `The student played "${lastPlayerSan}" as ${userSide}, and the opponent responded with "${moveObj.san}" (FEN: ${chess.fen()}). Provide sharp, constructive grandmaster commentary on this aggressive position and suggest candidate attack ideas for ${userSide}!`
+            : `A new game just began in the ${currentRepertoire === 'white_attack' ? 'Aggressive 1.e4 White repertoire' : 'Sicilian Dragon'}. Guide the student on their next move!`;
           conversationHistory.push({ role: 'user', content: prompt });
           streamResponseFromOllama();
         }
@@ -456,7 +549,7 @@ document.addEventListener('DOMContentLoaded', () => {
       let subtitle = '';
 
       if (chess.in_checkmate()) {
-        const winner = chess.turn() === 'w' ? 'Black (You)' : 'White (Coach)';
+        const winner = chess.turn() === 'w' ? 'Black' : 'White';
         title = `CHECKMATE! 👑`;
         subtitle = `${winner} wins by checkmate!`;
       } else if (chess.in_draw()) {
@@ -470,7 +563,7 @@ document.addEventListener('DOMContentLoaded', () => {
       gameOverModal.classList.add('active');
 
       if (!isStreaming) {
-        const postGamePrompt = `The game just concluded (${title} - ${subtitle}). Provide a grandmaster post-game recap analyzing our tactical battle in the Sicilian Dragon!`;
+        const postGamePrompt = `The game just concluded (${title} - ${subtitle}). Provide a grandmaster post-game recap analyzing our tactical battle in the ${currentRepertoire === 'white_attack' ? '1.e4 King attack' : 'Sicilian Dragon'}!`;
         conversationHistory.push({ role: 'user', content: postGamePrompt });
         streamResponseFromOllama();
       }
@@ -491,8 +584,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   btnModalRematch.addEventListener('click', () => {
     gameOverModal.classList.remove('active');
-    variationSelect.value = 'initial';
-    loadPreset('initial', true);
+    const presets = REPERTOIRE_PRESETS[currentRepertoire];
+    const defaultPreset = Object.keys(presets)[0];
+    variationSelect.value = defaultPreset;
+    loadPreset(defaultPreset, true);
   });
 
   btnModalClose.addEventListener('click', () => {
@@ -500,7 +595,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // ==========================================================
-  // 3. Dynamic SVG Arrow Overlay Engine
+  // 4. Dynamic SVG Arrow Overlay Engine
   // ==========================================================
   function calculatePositionSuggestions() {
     if (chess.game_over()) return { bestMove: null, threatMove: null, candidateMoves: [] };
@@ -527,14 +622,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
       chess.undo();
 
-      let dragonBonus = 0;
-      if (move.san.includes('Rxc3')) dragonBonus = 2.0;
-      if (move.to === 'c4' && move.piece === 'n') dragonBonus = 0.8;
-      if (move.san === 'h5' || move.san === 'd5') dragonBonus = 0.7;
+      let attackBonus = 0;
+      if (move.san.includes('Nxf7') || move.san.includes('Rxc3')) attackBonus = 2.0;
+      if (move.san.includes('Qf3+') || move.to === 'c4') attackBonus = 0.8;
 
       const adjustedScore = currentTurn === 'w' 
-        ? (score + (oppWorst !== -9999 ? oppWorst * 0.25 : 0))
-        : (score - dragonBonus - (oppWorst !== 9999 ? oppWorst * 0.25 : 0));
+        ? (score + attackBonus + (oppWorst !== -9999 ? oppWorst * 0.25 : 0))
+        : (score - attackBonus - (oppWorst !== 9999 ? oppWorst * 0.25 : 0));
 
       evaluatedMoves.push({
         move: move,
@@ -606,7 +700,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const arrowsToDraw = [];
 
     if (suggestions.bestMove) {
-      const isSac = suggestions.bestMove.san.includes('Rxc3');
+      const isSac = suggestions.bestMove.san.includes('Nxf7') || suggestions.bestMove.san.includes('Rxc3');
       arrowsToDraw.push({
         from: suggestions.bestMove.from,
         to: suggestions.bestMove.to,
@@ -662,13 +756,14 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // ==========================================================
-  // 4. Master Database & Candidate Suggestions
+  // 5. Master Database & Candidate Suggestions
   // ==========================================================
   function updateMasterStats(presetKey) {
-    const preset = TABIYA_PRESETS[presetKey || variationSelect.value] || TABIYA_PRESETS['yugoslav_12h4'];
+    const presets = REPERTOIRE_PRESETS[currentRepertoire];
+    const preset = presets[presetKey || variationSelect.value] || presets[Object.keys(presets)[0]];
     const turnName = chess.turn() === 'w' ? 'White' : 'Black';
 
-    if (preset.stats) {
+    if (preset && preset.stats) {
       statsTotalGames.textContent = `${preset.stats.total} Master Games in line (${turnName} to move)`;
       statWhitePct.style.width = `${preset.stats.whitePct}%`;
       statWhitePct.textContent = `${preset.stats.whitePct}% ♔`;
@@ -720,8 +815,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             appendUserBubble(`Played: ${cand.san}`);
 
-            if (autoPlayOpponent && chess.turn() === 'w') {
-              triggerWhiteAutoResponse(move.san);
+            const isPlayerTurn = (currentRepertoire === 'black_dragon' && chess.turn() === 'b') || (currentRepertoire === 'white_attack' && chess.turn() === 'w');
+            if (autoPlayOpponent && !isPlayerTurn) {
+              triggerAutoOpponentResponse(move.san);
             } else {
               const prompt = `I played the recommended move "${cand.san}" on the board (FEN: ${chess.fen()}). Break down the tactical plan and candidate follow-ups.`;
               conversationHistory.push({ role: 'user', content: prompt });
@@ -739,10 +835,11 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // ==========================================================
-  // 5. Board & Move Management
+  // 6. Board & Move Management
   // ==========================================================
   function loadPreset(presetKey, triggerCoachPrompt = false) {
-    const preset = TABIYA_PRESETS[presetKey] || TABIYA_PRESETS['yugoslav_12h4'];
+    const presets = REPERTOIRE_PRESETS[currentRepertoire];
+    const preset = presets[presetKey] || presets[Object.keys(presets)[0]];
     chess.reset();
     moveHistory = [];
     gameOverModal.classList.remove('active');
@@ -767,11 +864,11 @@ document.addEventListener('DOMContentLoaded', () => {
     updateMasterStats(presetKey);
     classifyMove(moveHistory[currentMoveIndex]?.san || null);
 
-    // If initial standard game preset, White auto-plays 1.e4!
-    if (presetKey === 'initial' && autoPlayOpponent && chess.turn() === 'w') {
-      triggerWhiteAutoResponse(null);
+    // If starting standard game as Black, White auto-plays 1.e4
+    if (presetKey === 'initial' && currentRepertoire === 'black_dragon' && autoPlayOpponent && chess.turn() === 'w') {
+      triggerAutoOpponentResponse(null);
     } else if (triggerCoachPrompt && !isStreaming) {
-      const userPrompt = `I just switched to the position: "${preset.name}". Give me your high-level tactical assessment of this setup and what Black should prioritize.`;
+      const userPrompt = `I just switched to the position: "${preset.name}". Give me your high-level tactical assessment of this setup and how ${currentRepertoire === 'white_attack' ? 'White should press the attack' : 'Black should counter-punch'}.`;
       appendUserBubble(`Switched to tabiya: ${preset.name}`);
       conversationHistory.push({ role: 'user', content: userPrompt });
       streamResponseFromOllama();
@@ -889,12 +986,13 @@ document.addEventListener('DOMContentLoaded', () => {
           updateMasterStats();
           checkGameOverStatus();
 
-          appendUserBubble(`Played on board: ${playedSan}`);
+          appendUserBubble(`Played: ${playedSan}`);
 
-          if (autoPlayOpponent && chess.turn() === 'w') {
-            triggerWhiteAutoResponse(playedSan);
+          const isOpponentTurn = (currentRepertoire === 'black_dragon' && chess.turn() === 'w') || (currentRepertoire === 'white_attack' && chess.turn() === 'b');
+          if (autoPlayOpponent && isOpponentTurn) {
+            triggerAutoOpponentResponse(playedSan);
           } else if (!isStreaming && !chess.game_over()) {
-            const movePrompt = `I just played "${playedSan}" on the board (FEN: ${chess.fen()}). Analyze this move in the context of the Dragon. Is it strong, sharp, or does White have an immediate tactical counter-threat?`;
+            const movePrompt = `I just played "${playedSan}" on the board (FEN: ${chess.fen()}). Analyze this move in our ${currentRepertoire === 'white_attack' ? 'aggressive White 1.e4 attack' : 'Sicilian Dragon defense'}. Is it sharp, and what is the plan?`;
             conversationHistory.push({ role: 'user', content: movePrompt });
             streamResponseFromOllama();
           }
@@ -1018,13 +1116,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   btnConsultCoach.addEventListener('click', () => {
     const boardCtx = getCurrentBoardContext();
-    const question = `Coach Vance, evaluate this position on the board (${boardCtx.preset}):\nMove: ${boardCtx.last_move} | Turn: ${boardCtx.turn} to play\nFEN: ${boardCtx.fen}\n\nWhat are the top tactical candidate moves for ${boardCtx.turn} and what plans should I formulate?`;
+    const question = `Coach Vance, evaluate this position on the board (${boardCtx.preset}):\nMove: ${boardCtx.last_move} | Turn: ${boardCtx.turn} to play\nFEN: ${boardCtx.fen}\n\nWhat are the top tactical candidate moves for ${boardCtx.turn} and how do we press our aggressive attacking strategy?`;
     chatInput.value = question;
     handleSendMessage();
   });
 
   // ==========================================================
-  // 6. Apple iMessage Messaging System & Ollama Streaming
+  // 7. Apple iMessage Messaging System & Ollama Streaming
   // ==========================================================
   chatInput.addEventListener('input', () => {
     chatInput.style.height = 'auto';
@@ -1039,13 +1137,6 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   btnSend.addEventListener('click', handleSendMessage);
-
-  document.querySelectorAll('.tactic-pill').forEach(pill => {
-    pill.addEventListener('click', () => {
-      chatInput.value = pill.getAttribute('data-msg');
-      handleSendMessage();
-    });
-  });
 
   function appendUserBubble(text) {
     const group = document.createElement('div');
@@ -1207,11 +1298,11 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   btnResetSession.addEventListener('click', () => {
-    if (confirm('Reset coaching session to the Yugoslav Attack 12.h4 tabiya?')) {
+    if (confirm('Reset coaching session to current tabiya?')) {
       location.reload();
     }
   });
 
   // Initial load
-  loadPreset('yugoslav_12h4', false);
+  setRepertoire('black_dragon');
 });

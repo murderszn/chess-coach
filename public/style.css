@@ -5,7 +5,7 @@
    ========================================================== */
 
 :root {
-  /* Classical Roman & Greek Color System */
+  /* Classical Roman & Greek Color System (Default Dark Basalt) */
   --bg-app: #0e1118;
   --roman-gold: #d4af37;
   --roman-gold-light: #f5e6b3;
@@ -52,6 +52,198 @@
   --border-gold-subtle: 1px solid rgba(212, 175, 55, 0.22);
   --border-glass: 1px solid rgba(255, 255, 255, 0.1);
   --border-column: 1px solid rgba(212, 175, 55, 0.3);
+}
+
+/* ==========================================================
+   Sunlit Athenian Light Theme (White 1.e4 Attack Repertoire)
+   ========================================================== */
+body.light-theme {
+  --bg-app: #f4efe6;
+  --roman-gold: #b38c20;
+  --roman-gold-light: #42320b;
+  --roman-gold-glow: rgba(179, 140, 32, 0.3);
+  --roman-bronze: #6e4e1f;
+  --carrara-white: #ffffff;
+  --carrara-muted: #574b3d;
+  --aegean-blue: #007aff;
+  --aegean-blue-hover: #0062cc;
+  --basalt-glass: rgba(255, 253, 248, 0.88);
+  --basalt-glass-card: rgba(255, 255, 255, 0.94);
+  --basalt-surface: rgba(240, 235, 222, 0.9);
+  --basalt-surface-hover: rgba(230, 222, 204, 1);
+
+  --text-primary: #1c1917;
+  --text-secondary: #44403c;
+  --text-muted: #78716c;
+  --text-gold: #8c6818;
+
+  --sq-light: #ffffff;
+  --sq-dark: #587960;
+  --sq-highlight: rgba(212, 175, 55, 0.45);
+  --sq-selected: rgba(0, 122, 255, 0.6);
+  --sq-legal-dot: rgba(179, 140, 32, 0.6);
+  --sq-legal-ring: rgba(179, 140, 32, 0.8);
+
+  background-color: #f4efe6 !important;
+  background-image: 
+    linear-gradient(to right, rgba(246, 242, 234, 0.93), rgba(240, 235, 222, 0.95)),
+    url('assets/classical_bg.jpg') !important;
+  color: #1c1917 !important;
+}
+
+body.light-theme .board-main-stage {
+  background: rgba(255, 252, 245, 0.82);
+  border-right: 1px solid rgba(179, 140, 32, 0.3);
+  box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.06);
+}
+
+body.light-theme .imessage-header {
+  background: rgba(255, 255, 255, 0.95);
+  border-bottom: 1px solid rgba(179, 140, 32, 0.25);
+}
+
+body.light-theme .coach-name {
+  color: #1c1917;
+}
+
+body.light-theme .coach-bubble {
+  background: #ffffff;
+  color: #1c1917;
+  border: 1px solid rgba(179, 140, 32, 0.3);
+  border-left: 3px solid #b38c20;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+}
+
+body.light-theme .user-bubble {
+  background: linear-gradient(135deg, #007aff 0%, #005bb5 100%);
+  color: #ffffff;
+}
+
+body.light-theme .imessage-input-bar {
+  background: rgba(255, 252, 245, 0.98);
+  border-top: 1px solid rgba(179, 140, 32, 0.25);
+}
+
+body.light-theme .imessage-capsule {
+  background: #ffffff;
+  border: 1px solid rgba(179, 140, 32, 0.35);
+  color: #1c1917;
+}
+
+body.light-theme .imessage-capsule textarea {
+  color: #1c1917;
+}
+
+body.light-theme .imessage-capsule textarea::placeholder {
+  color: #a8a29e;
+}
+
+body.light-theme .quick-tactics-drawer {
+  background: rgba(255, 252, 245, 0.8);
+}
+
+body.light-theme .tactic-pill {
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(179, 140, 32, 0.3);
+  color: #44403c;
+}
+
+body.light-theme .tactic-pill:hover {
+  background: rgba(179, 140, 32, 0.15);
+  color: #1c1917;
+}
+
+body.light-theme .preset-dropdown {
+  background: #ffffff;
+  color: #1c1917;
+  border: 1px solid rgba(179, 140, 32, 0.4);
+}
+
+body.light-theme .preset-dropdown option {
+  background: #ffffff;
+  color: #1c1917;
+}
+
+body.light-theme .action-chip {
+  background: rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(179, 140, 32, 0.3);
+  color: #44403c;
+}
+
+body.light-theme .action-chip:hover {
+  background: rgba(179, 140, 32, 0.15);
+  color: #1c1917;
+}
+
+body.light-theme .action-chip.active-toggle {
+  background: rgba(179, 140, 32, 0.2);
+  border-color: #b38c20;
+  color: #1c1917;
+  font-weight: 700;
+}
+
+body.light-theme .board-bottom-bar {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(179, 140, 32, 0.3);
+}
+
+body.light-theme .move-entry {
+  color: #292524;
+}
+
+body.light-theme .move-entry:hover {
+  background: rgba(179, 140, 32, 0.15);
+  color: #000;
+}
+
+body.light-theme .move-entry.active-move {
+  background: rgba(179, 140, 32, 0.25);
+  color: #1c1917;
+  border-color: #b38c20;
+}
+
+/* Repertoire Toggle Switch */
+.repertoire-switch-group {
+  display: flex;
+  background: var(--basalt-surface);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  border-radius: 8px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.rep-toggle-btn {
+  background: transparent;
+  border: none;
+  color: var(--carrara-muted);
+  padding: 4px 9px;
+  border-radius: 6px;
+  font-family: var(--font-roman);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.rep-toggle-btn.active {
+  background: linear-gradient(135deg, #a87e2b 0%, #d4af37 50%, #8c651e 100%);
+  color: #12100a;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+body.light-theme .repertoire-switch-group {
+  background: #ede8dc;
+  border-color: rgba(179, 140, 32, 0.4);
+}
+
+body.light-theme .rep-toggle-btn {
+  color: #574b3d;
+}
+
+body.light-theme .rep-toggle-btn.active {
+  background: linear-gradient(135deg, #b38c20 0%, #d4af37 100%);
+  color: #12100a;
 }
 
 * {

@@ -25,17 +25,19 @@
       
       <!-- Top Control Header -->
       <div class="board-top-bar">
+        <div class="repertoire-switch-group">
+          <button class="rep-toggle-btn active" id="btn-rep-black" data-rep="black_dragon" title="Black Repertoire: Sicilian Dragon Mastery (Dark Theme)">
+            ⚔️ Black: Dragon
+          </button>
+          <button class="rep-toggle-btn" id="btn-rep-white" data-rep="white_attack" title="White Repertoire: Aggressive 1.e4 Fried Liver & Gambits (Light Theme)">
+            ⚡ White: 1.e4 Attack
+          </button>
+        </div>
+
         <div class="variation-picker-wrapper">
-          <label for="variation-select" class="picker-label">Tabiya Preset</label>
+          <label for="variation-select" class="picker-label">Preset</label>
           <select id="variation-select" class="preset-dropdown">
-            <option value="yugoslav_12h4">🐉 Yugoslav 9.Bc4 Main Line (12.h4)</option>
-            <option value="exchange_sac">💥 Thematic ...Rxc3 Sac Position</option>
-            <option value="soltis_h5">🛡️ Soltis Variation (12...h5)</option>
-            <option value="yugoslav_d5">⚡ Yugoslav 9.0-0-0 d5! Central Strike</option>
-            <option value="chinese_dragon">🏮 Chinese Dragon (10...Rb8)</option>
-            <option value="levenfish">🗡️ Levenfish Attack (6.f4)</option>
-            <option value="classical">♟️ Classical Dragon (6.Be2)</option>
-            <option value="initial">🏁 Standard Starting Position</option>
+            <!-- Dynamically populated based on active repertoire -->
           </select>
         </div>
 
@@ -222,19 +224,8 @@
 
       <!-- Quick Tactic Chips -->
       <div class="quick-tactics-drawer">
-        <div class="tactics-scroll-track">
-          <button class="tactic-pill" data-msg="I played 12...Nc4 forcing White's bishop off b3. How does Black handle 13.Bxc4 Rxc4 14.h5 Nxh5 15.g4 Nf6?">
-            ⚔️ 12...Nc4 Outpost
-          </button>
-          <button class="tactic-pill" data-msg="I wanted to play 12...h5 (Soltis Variation) to clamp down the h-file. What is White's most dangerous counter?">
-            🛡️ 12...h5 Soltis
-          </button>
-          <button class="tactic-pill" data-msg="I want to play the thematic exchange sacrifice ...Rxc3! What are the exact conditions where giving up the rook on c3 is completely winning?">
-            💥 ...Rxc3 Sac
-          </button>
-          <button class="tactic-pill" data-msg="What if White plays 9.0-0-0 without Bc4? Can I strike immediately with 9...d5?">
-            ⚡ 9.0-0-0 d5! Strike
-          </button>
+        <div class="tactics-scroll-track" id="tactics-chips-container">
+          <!-- Dynamically populated based on active repertoire -->
         </div>
       </div>
 
