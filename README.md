@@ -40,8 +40,8 @@ An interactive, Greco-Roman styled Grandmaster Chess Analysis Board paired with 
 
 ### 2. Installation
 ```bash
-git clone https://github.com/murderszn/chess.git
-cd chess
+git clone https://github.com/murderszn/chess-coach.git
+cd chess-coach
 npm install
 ```
 
