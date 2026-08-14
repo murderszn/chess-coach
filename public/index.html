@@ -66,6 +66,11 @@
             🏛️ Master DB
           </button>
 
+          <!-- Sound FX Toggle -->
+          <button class="action-chip active-toggle" id="btn-toggle-sound" title="Toggle Sound FX">
+            🔊 Sound
+          </button>
+
           <button class="action-chip" id="btn-flip-board" title="Flip Board Perspective">
             🔄 Flip
           </button>
@@ -247,6 +252,22 @@
 
     </aside>
 
+  </div>
+
+  <!-- Game Over & Victory / Draw Modal -->
+  <div class="game-over-modal-backdrop" id="game-over-modal">
+    <div class="game-over-card">
+      <div class="modal-laurel">🏛️ ⚔️ 🏛️</div>
+      <h2 class="modal-title" id="game-over-title">CHECKMATE!</h2>
+      <p class="modal-subtitle" id="game-over-subtitle">Victory for Black in the Sicilian Dragon</p>
+      <div class="modal-stat-box" id="game-over-stats">
+        Game concluded in 34 moves. Total pieces captured: 14.
+      </div>
+      <div class="modal-actions">
+        <button class="modal-btn primary" id="btn-modal-rematch">⚔️ Play Full Game (1.e4)</button>
+        <button class="modal-btn secondary" id="btn-modal-close">Close Analysis</button>
+      </div>
+    </div>
   </div>
 
   <script src="app.js"></script>
