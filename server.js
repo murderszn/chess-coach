@@ -3,6 +3,9 @@ const cors = require('cors');
 const path = require('path');
 const http = require('http');
 
+// Preserve native fetch before any WASM library might clobber global scope
+const nodeFetch = globalThis.fetch;
+
 const app = express();
 const PORT = process.env.PORT || 3030;
 const OLLAMA_HOST = process.env.OLLAMA_HOST || 'http://127.0.0.1:11434';
@@ -123,7 +126,7 @@ app.post('/api/chat', async (req, res) => {
   ];
 
   try {
-    const ollamaResponse = await fetch(`${OLLAMA_HOST}/api/chat`, {
+    const ollamaResponse = await nodeFetch(`${OLLAMA_HOST}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -199,6 +202,11 @@ let currentEngineCallback = null;
 
 function initEngineInstance() {
   initStockfish().then(engine => {
+    // Restore global fetch clobbered by emscripten WASM polyfill
+    if (nodeFetch) {
+      global.fetch = nodeFetch;
+      globalThis.fetch = nodeFetch;
+    }
     stockfishEngine = engine;
     engineReady = true;
     engine.listener = (line) => {
@@ -210,6 +218,10 @@ function initEngineInstance() {
     engine.sendCommand('setoption name Skill Level value 20');
     console.log('♟️ Stockfish 18 WASM (NNUE) Engine Initialized (3500+ ELO)');
   }).catch(err => {
+    if (nodeFetch) {
+      global.fetch = nodeFetch;
+      globalThis.fetch = nodeFetch;
+    }
     console.error('Stockfish 18 initialization notice:', err.message);
   });
 }
@@ -283,10 +295,10 @@ app.post('/api/engine/bestmove', async (req, res) => {
     const chessInstance = new Chess(fen);
 
     // 1. Try Lichess Master Opening Tree (Moves played by 2600+ Grandmasters)
-    if (use_book && chessInstance.history().length < 24) {
+    if (use_book && chessInstance.history().length < 24 && nodeFetch) {
       try {
         const lichessUrl = `https://explorer.lichess.ovh/masters?fen=${encodeURIComponent(fen)}&topGames=0`;
-        const response = await fetch(lichessUrl, { headers: { 'Accept': 'application/json' }, signal: AbortSignal.timeout(1200) });
+        const response = await nodeFetch(lichessUrl, { headers: { 'Accept': 'application/json' }, signal: AbortSignal.timeout(1200) });
         if (response.ok) {
           const data = await response.json();
           if (data.moves && data.moves.length > 0) {
