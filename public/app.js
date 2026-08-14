@@ -740,17 +740,39 @@ document.addEventListener('DOMContentLoaded', () => {
     return rawCentipawns / 100;
   }
 
-  function updateEvalBar() {
-    const rawScore = calculateEvaluation();
-    const formattedScore = (rawScore > 0 ? `+${rawScore.toFixed(1)}` : rawScore.toFixed(1));
+  function applyEvalBarScore(score) {
+    const formattedScore = (score > 0 ? `+${score.toFixed(1)}` : score.toFixed(1));
     evalScoreText.textContent = formattedScore;
 
-    const clampedScore = Math.max(-5, Math.min(5, rawScore));
+    const clampedScore = Math.max(-5, Math.min(5, score));
     const whiteHeight = 50 + (clampedScore / 5) * 45;
     const blackHeight = 100 - whiteHeight;
 
     evalFillWhite.style.height = `${whiteHeight}%`;
     evalFillBlack.style.height = `${blackHeight}%`;
+  }
+
+  let evalDebounceTimer = null;
+  function updateEvalBar() {
+    const rawScore = calculateEvaluation();
+    applyEvalBarScore(rawScore);
+
+    clearTimeout(evalDebounceTimer);
+    evalDebounceTimer = setTimeout(async () => {
+      try {
+        const resp = await fetch('/api/engine/bestmove', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ fen: chess.fen(), depth: 10, use_book: false })
+        });
+        if (resp.ok) {
+          const data = await resp.json();
+          if (data.eval_score !== undefined) {
+            applyEvalBarScore(parseFloat(data.eval_score));
+          }
+        }
+      } catch (e) {}
+    }, 150);
   }
 
   function classifyMove(san) {
@@ -942,7 +964,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return s.trim();
   }
 
-  function triggerAutoOpponentResponse(lastPlayerSan) {
+  async function triggerAutoOpponentResponse(lastPlayerSan) {
     const isPlayerTurn = (currentRepertoire === 'black_dragon' && chess.turn() === 'b') || (currentRepertoire === 'white_attack' && chess.turn() === 'w');
     if (!autoPlayOpponent || isPlayerTurn || chess.game_over()) return;
 
@@ -950,51 +972,76 @@ document.addEventListener('DOMContentLoaded', () => {
     turnText.textContent = `${oppName} is calculating...`;
     turnDot.className = `turn-dot ${chess.turn() === 'w' ? 'white' : 'black'}`;
 
-    setTimeout(() => {
-      if (isPlayerTurn) return;
+    // Small delay to simulate grandmaster calculation rhythm
+    await new Promise(r => setTimeout(r, 450));
 
-      const oppMoveSan = pickAutoOpponentMove(lastPlayerSan);
-      if (!oppMoveSan) return;
-
-      const isCapture = chess.get(oppMoveSan) || oppMoveSan.includes('x');
-      const moveObj = chess.move(oppMoveSan);
-
-      if (moveObj) {
-        moveHistory.push({
-          san: moveObj.san,
+    // 1. Query Server Stockfish 18 WASM NNUE / Lichess Master DB
+    let oppMoveSan = null;
+    try {
+      const resp = await fetch('/api/engine/bestmove', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           fen: chess.fen(),
-          from: moveObj.from,
-          to: moveObj.to
-        });
-        currentMoveIndex = moveHistory.length - 1;
-
-        if (chess.in_check()) {
-          playChessSound('check');
-        } else if (moveObj.captured || isCapture) {
-          playChessSound('capture');
-        } else {
-          playChessSound('move');
-        }
-
-        renderBoard();
-        renderMovesList();
-        renderArrows();
-        updateEvalBar();
-        classifyMove(moveObj.san);
-        updateMasterStats();
-        updateExplainMoveButton();
-        checkGameOverStatus();
-
-        if (!isStreaming && !chess.game_over()) {
-          const userSide = currentRepertoire === 'white_attack' ? 'White' : 'Black';
-          const prompt = lastPlayerSan 
-            ? `The student played "${lastPlayerSan}" as ${userSide}, and the opponent responded with "${moveObj.san}" (FEN: ${chess.fen()}). Provide sharp, constructive grandmaster commentary on this aggressive position and suggest candidate attack ideas for ${userSide}!`
-            : `A new game just began in the ${currentRepertoire === 'white_attack' ? 'Aggressive 1.e4 White repertoire' : 'Sicilian Dragon'}. Guide the student on their next move!`;
-          conversationHistory.push({ role: 'user', content: prompt });
-          streamResponseFromOllama();
+          depth: 14,
+          skill_level: 20
+        })
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.best_move_san) {
+          oppMoveSan = data.best_move_san;
         }
       }
-    }, 650);
+    } catch (e) {
+      console.warn('Server engine fallback to local book:', e);
+    }
+
+    // 2. Fallback to client-side opening book & tactical engine
+    if (!oppMoveSan) {
+      oppMoveSan = pickAutoOpponentMove(lastPlayerSan);
+    }
+
+    if (!oppMoveSan || isPlayerTurn) return;
+
+    const isCapture = chess.get(oppMoveSan) || oppMoveSan.includes('x');
+    const moveObj = chess.move(oppMoveSan);
+
+    if (moveObj) {
+      moveHistory.push({
+        san: moveObj.san,
+        fen: chess.fen(),
+        from: moveObj.from,
+        to: moveObj.to
+      });
+      currentMoveIndex = moveHistory.length - 1;
+
+      if (chess.in_check()) {
+        playChessSound('check');
+      } else if (moveObj.captured || isCapture) {
+        playChessSound('capture');
+      } else {
+        playChessSound('move');
+      }
+
+      renderBoard();
+      renderMovesList();
+      renderArrows();
+      updateEvalBar();
+      classifyMove(moveObj.san);
+      updateMasterStats();
+      updateExplainMoveButton();
+      checkGameOverStatus();
+
+      if (!isStreaming && !chess.game_over()) {
+        const userSide = currentRepertoire === 'white_attack' ? 'White' : 'Black';
+        const prompt = lastPlayerSan 
+          ? `The student played "${lastPlayerSan}" as ${userSide}, and the opponent responded with master move "${moveObj.san}" (FEN: ${chess.fen()}). Provide sharp, constructive grandmaster commentary on this position and suggest candidate ideas for ${userSide}!`
+          : `A new game just began in the ${currentRepertoire === 'white_attack' ? 'Aggressive 1.e4 White repertoire' : 'Sicilian Dragon'}. Guide the student on their next move!`;
+        conversationHistory.push({ role: 'user', content: prompt });
+        streamResponseFromOllama();
+      }
+    }
   }
 
   // ==========================================================
