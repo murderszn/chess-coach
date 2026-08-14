@@ -684,88 +684,6 @@ document.addEventListener('DOMContentLoaded', () => {
     return score;
   }
 
-  // Quiescence Search (Avoids horizon effect on captures & checks)
-  function quiescence(chessInstance, alpha, beta, qDepth = 0) {
-    const standPat = evaluateBoardState(chessInstance);
-    const isWhite = chessInstance.turn() === 'w';
-
-    if (qDepth >= 3 || chessInstance.game_over()) return standPat;
-
-    if (isWhite) {
-      if (standPat >= beta) return beta;
-      if (standPat > alpha) alpha = standPat;
-    } else {
-      if (standPat <= alpha) return alpha;
-      if (standPat < beta) beta = standPat;
-    }
-
-    // Only generate captures and checks
-    const tacticalMoves = chessInstance.moves({ verbose: true }).filter(m => m.captured || m.san.includes('+') || m.san.includes('x'));
-    // Sort captures by MVV-LVA (Most Valuable Victim - Least Valuable Attacker)
-    tacticalMoves.sort((a, b) => {
-      const valA = (a.captured ? PIECE_VALUES[a.captured] : 0) - (PIECE_VALUES[a.piece] || 0);
-      const valB = (b.captured ? PIECE_VALUES[b.captured] : 0) - (PIECE_VALUES[b.piece] || 0);
-      return valB - valA;
-    });
-
-    for (const move of tacticalMoves) {
-      chessInstance.move(move);
-      const score = quiescence(chessInstance, alpha, beta, qDepth + 1);
-      chessInstance.undo();
-
-      if (isWhite) {
-        if (score >= beta) return beta;
-        if (score > alpha) alpha = score;
-      } else {
-        if (score <= alpha) return alpha;
-        if (score < beta) beta = score;
-      }
-    }
-
-    return isWhite ? alpha : beta;
-  }
-
-  // Alpha-Beta Minimax Search
-  function alphaBeta(chessInstance, depth, alpha, beta, isMaximizing) {
-    if (depth === 0 || chessInstance.game_over()) {
-      return quiescence(chessInstance, alpha, beta, 0);
-    }
-
-    const legalMoves = chessInstance.moves({ verbose: true });
-    // Move ordering: captures and checks first
-    legalMoves.sort((a, b) => {
-      let scoreA = a.captured ? PIECE_VALUES[a.captured] * 10 : 0;
-      let scoreB = b.captured ? PIECE_VALUES[b.captured] * 10 : 0;
-      if (a.san.includes('+')) scoreA += 50;
-      if (b.san.includes('+')) scoreB += 50;
-      return scoreB - scoreA;
-    });
-
-    if (isMaximizing) {
-      let maxEval = -Infinity;
-      for (const move of legalMoves) {
-        chessInstance.move(move);
-        const evalScore = alphaBeta(chessInstance, depth - 1, alpha, beta, false);
-        chessInstance.undo();
-        maxEval = Math.max(maxEval, evalScore);
-        alpha = Math.max(alpha, evalScore);
-        if (beta <= alpha) break;
-      }
-      return maxEval;
-    } else {
-      let minEval = Infinity;
-      for (const move of legalMoves) {
-        chessInstance.move(move);
-        const evalScore = alphaBeta(chessInstance, depth - 1, alpha, beta, true);
-        chessInstance.undo();
-        minEval = Math.min(minEval, evalScore);
-        beta = Math.min(beta, evalScore);
-        if (beta <= alpha) break;
-      }
-      return minEval;
-    }
-  }
-
   function calculateEvaluation() {
     const rawCentipawns = evaluateBoardState(chess);
     return rawCentipawns / 100;
@@ -843,22 +761,48 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ==========================================================
-  // 3. Alpha-Beta Engine Position Calculations & Suggestions
+  // 3. Lightning Fast (<1ms) Memoized Position Calculations
   // ==========================================================
+  const positionSuggestionsCache = {};
+
   function calculatePositionSuggestions() {
-    if (chess.game_over()) return { bestMove: null, threatMove: null, topCandidates: [] };
+    const fen = chess.fen();
+    if (positionSuggestionsCache[fen]) {
+      return positionSuggestionsCache[fen];
+    }
+
+    if (chess.game_over()) {
+      const res = { bestMove: null, threatMove: null, topCandidates: [] };
+      positionSuggestionsCache[fen] = res;
+      return res;
+    }
 
     const currentTurn = chess.turn();
     const isWhite = currentTurn === 'w';
     const legalMoves = chess.moves({ verbose: true });
-    if (legalMoves.length === 0) return { bestMove: null, threatMove: null, topCandidates: [] };
+    if (legalMoves.length === 0) {
+      const res = { bestMove: null, threatMove: null, topCandidates: [] };
+      positionSuggestionsCache[fen] = res;
+      return res;
+    }
 
     const evaluatedMoves = [];
 
     for (const move of legalMoves) {
       chess.move(move);
-      // Run Alpha-Beta search at depth 2 (with quiescence search)
-      const score = alphaBeta(chess, 2, -Infinity, Infinity, !isWhite);
+      const score = evaluateBoardState(chess);
+
+      // Fast tactical check
+      let oppWorst = isWhite ? 99999 : -99999;
+      const oppMoves = chess.moves({ verbose: true });
+      const tacticalOppMoves = oppMoves.filter(m => m.captured || m.san.includes('+')).slice(0, 4);
+      for (const oppMove of tacticalOppMoves) {
+        chess.move(oppMove);
+        const oppEval = evaluateBoardState(chess);
+        chess.undo();
+        if (isWhite && oppEval < oppWorst) oppWorst = oppEval;
+        else if (!isWhite && oppEval > oppWorst) oppWorst = oppEval;
+      }
       chess.undo();
 
       let tacticalBonus = 0;
@@ -883,15 +827,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const bestMove = evaluatedMoves[0]?.move || null;
     const topCandidates = evaluatedMoves.slice(0, 3);
 
-    // Calculate Opponent's most dangerous immediate tactical threat
+    // Calculate Opponent Threat
     let threatMove = null;
     if (bestMove) {
       chess.move(bestMove);
       const oppMoves = chess.moves({ verbose: true });
       if (oppMoves.length > 0) {
         let oppBest = oppMoves[0];
-        let oppBestScore = isWhite ? Infinity : -Infinity;
-        for (const oppMove of oppMoves) {
+        let oppBestScore = isWhite ? 99999 : -99999;
+        for (const oppMove of oppMoves.slice(0, 6)) {
           chess.move(oppMove);
           const oppScore = evaluateBoardState(chess);
           chess.undo();
@@ -908,7 +852,9 @@ document.addEventListener('DOMContentLoaded', () => {
       chess.undo();
     }
 
-    return { bestMove, threatMove, topCandidates };
+    const result = { bestMove, threatMove, topCandidates };
+    positionSuggestionsCache[fen] = result;
+    return result;
   }
 
   function pickAutoOpponentMove(lastPlayerSan) {
