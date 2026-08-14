@@ -6,7 +6,7 @@ The board is a Greco-Roman / Chess.com-style arena (Carrara ivory and Verona gre
 
 ![Colonnade Board UI](public/assets/classical_bg.jpg)
 
-**Repo:** [github.com/murderszn/chess-coach](https://github.com/murderszn/chess-coach)
+**Repo:** [github.com/murderszn/chess-coach](https://github.com/murderszn/chess-coach) · **Architecture (GitHub Pages):** [murderszn.github.io/chess-coach](https://murderszn.github.io/chess-coach/)
 
 ---
 
@@ -132,7 +132,9 @@ PORT=8080 OLLAMA_HOST=http://127.0.0.1:11434 npm start
 
 ## How it works
 
-Two engines sit next to each other. **chess.js + a local heuristic search** own the board (legal moves, eval bar, arrows, auto-opponent). **Ollama Gemma 4** owns the words. Express only serves static files and proxies chat; it never searches chess.
+Interactive diagrams: **[murderszn.github.io/chess-coach](https://murderszn.github.io/chess-coach/)** (this repo’s GitHub Pages site, served from `docs/`).
+
+Two engines sit next to each other. The board is legal chess plus a search stack (Lichess masters, Stockfish 18 WASM, then a local fallback). **Ollama Gemma 4** owns the words. Express proxies chat and queues engine jobs; it does not pick moves itself.
 
 Game-review and PGN buttons exist in `index.html` and are queried in `app.js`, but they are not wired to handlers yet. Everything below is the live path.
 

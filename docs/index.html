@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Architecture · Sicilian Dragon Chess Coach</title>
+  <meta name="description" content="How the Sicilian Dragon Chess Coach works: browser board, Express proxy, Stockfish 18, Lichess masters, and Ollama Gemma 4.">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;800&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'dark',
+      securityLevel: 'loose',
+      flowchart: { curve: 'basis', padding: 16, htmlLabels: true, nodeSpacing: 28, rankSpacing: 36 },
+      sequence: { actorMargin: 28, messageMargin: 32 },
+      themeVariables: {
+        darkMode: true,
+        background: 'transparent',
+        primaryColor: '#1e2638',
+        primaryTextColor: '#f8fafc',
+        primaryBorderColor: '#d4af37',
+        secondaryColor: '#16202f',
+        tertiaryColor: '#121826',
+        lineColor: '#c5b27a',
+        textColor: '#f5f2eb',
+        fontFamily: 'Inter, system-ui, sans-serif',
+        fontSize: '14px',
+        nodeTextColor: '#f8fafc',
+        actorBkg: '#1e2638',
+        actorBorder: '#d4af37',
+        actorTextColor: '#f8fafc',
+        signalColor: '#e2c068',
+        signalTextColor: '#f5f2eb',
+        labelBoxBkgColor: '#16202f',
+        labelBoxBorderColor: '#d4af37',
+        labelTextColor: '#f5e6b3',
+        noteBkgColor: '#2a2430',
+        noteTextColor: '#f5f2eb',
+        activationBkgColor: '#2a3450',
+        clusterBkg: 'rgba(22, 28, 42, 0.72)',
+        clusterBorder: 'rgba(212, 175, 55, 0.45)'
+      }
+    });
+  </script>
+  <style>
+    :root {
+      --bg: #0e1118;
+      --gold: #d4af37;
+      --gold-light: #f5e6b3;
+      --gold-dim: rgba(212, 175, 55, 0.22);
+      --text: #f8fafc;
+      --muted: #8a96a6;
+      --secondary: #c5cdd8;
+      --glass: rgba(14, 18, 27, 0.82);
+      --card: rgba(22, 28, 42, 0.88);
+      --surface: rgba(30, 38, 56, 0.72);
+      --aegean: #1d5fa8;
+      --roman: "Cinzel", "Times New Roman", serif;
+      --serif: "Cormorant Garamond", Georgia, serif;
+      --sans: "Inter", system-ui, sans-serif;
+      --mono: "JetBrains Mono", ui-monospace, monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      font-family: var(--sans);
+      background:
+        radial-gradient(1200px 600px at 10% -10%, rgba(212, 175, 55, 0.12), transparent 55%),
+        radial-gradient(900px 500px at 100% 0%, rgba(29, 95, 168, 0.16), transparent 50%),
+        linear-gradient(180deg, #121826 0%, #0e1118 40%, #0b0e14 100%);
+    }
+
+    a { color: var(--gold-light); }
+    a:hover { color: #fff; }
+
+    .shell {
+      display: grid;
+      grid-template-columns: 260px minmax(0, 1fr);
+      max-width: 1280px;
+      margin: 0 auto;
+      min-height: 100vh;
+    }
+
+    nav {
+      position: sticky;
+      top: 0;
+      align-self: start;
+      height: 100vh;
+      padding: 28px 22px;
+      border-right: 1px solid var(--gold-dim);
+      background: rgba(10, 13, 20, 0.72);
+      backdrop-filter: blur(16px);
+      overflow: auto;
+    }
+
+    .mark {
+      font-family: var(--roman);
+      letter-spacing: 0.12em;
+      font-size: 11px;
+      color: var(--gold);
+      text-transform: uppercase;
+    }
+    nav h1 {
+      font-family: var(--roman);
+      font-size: 22px;
+      margin: 8px 0 6px;
+      line-height: 1.2;
+    }
+    nav p {
+      color: var(--muted);
+      font-family: var(--serif);
+      font-size: 17px;
+      margin: 0 0 22px;
+    }
+
+    nav ol {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    nav li { margin: 0 0 4px; }
+    nav a {
+      display: block;
+      text-decoration: none;
+      color: var(--secondary);
+      font-size: 13px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid transparent;
+    }
+    nav a:hover {
+      background: var(--surface);
+      border-color: var(--gold-dim);
+      color: var(--gold-light);
+    }
+
+    .repo-links {
+      margin-top: 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .repo-links a {
+      font-size: 12px;
+      color: var(--gold);
+    }
+
+    main { padding: 40px 48px 80px; }
+
+    header.hero {
+      border: 1px solid var(--gold-dim);
+      background: var(--card);
+      border-radius: 18px;
+      padding: 32px 36px;
+      margin-bottom: 28px;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
+    }
+    header.hero h2 {
+      font-family: var(--roman);
+      font-size: 34px;
+      margin: 0 0 10px;
+    }
+    header.hero p {
+      font-family: var(--serif);
+      font-size: 21px;
+      line-height: 1.45;
+      color: var(--secondary);
+      margin: 0 0 16px;
+      max-width: 70ch;
+    }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip {
+      font-size: 12px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      border: 1px solid var(--gold-dim);
+      color: var(--gold-light);
+      padding: 5px 10px;
+      border-radius: 999px;
+      background: rgba(212, 175, 55, 0.08);
+    }
+
+    section.card {
+      border: 1px solid var(--gold-dim);
+      background: var(--card);
+      border-radius: 16px;
+      padding: 26px 28px 10px;
+      margin: 0 0 22px;
+    }
+    section.card h3 {
+      font-family: var(--roman);
+      font-size: 20px;
+      margin: 0 0 8px;
+    }
+    section.card .lead {
+      color: var(--secondary);
+      font-family: var(--serif);
+      font-size: 19px;
+      line-height: 1.45;
+      margin: 0 0 16px;
+    }
+    .diagram {
+      overflow-x: auto;
+      padding: 8px 4px 18px;
+      border-top: 1px solid rgba(255,255,255,0.06);
+    }
+    .mermaid { min-width: 640px; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+      margin: 8px 0 20px;
+    }
+    th, td {
+      text-align: left;
+      padding: 10px 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      vertical-align: top;
+    }
+    th { color: var(--gold-light); font-weight: 600; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; }
+    td code, p code, li code {
+      font-family: var(--mono);
+      font-size: 12.5px;
+      color: var(--gold-light);
+      background: rgba(0,0,0,0.28);
+      padding: 1px 6px;
+      border-radius: 4px;
+    }
+
+    .note {
+      font-size: 14px;
+      color: var(--muted);
+      border-left: 2px solid var(--gold);
+      padding: 6px 0 6px 12px;
+      margin: 0 0 16px;
+    }
+
+    footer {
+      color: var(--muted);
+      font-size: 13px;
+      padding: 8px 8px 0;
+    }
+
+    @media (max-width: 900px) {
+      .shell { grid-template-columns: 1fr; }
+      nav {
+        position: relative;
+        height: auto;
+        border-right: 0;
+        border-bottom: 1px solid var(--gold-dim);
+      }
+      nav ol { display: flex; flex-wrap: wrap; gap: 4px; }
+      main { padding: 24px 18px 60px; }
+      header.hero h2 { font-size: 26px; }
+      .mermaid { min-width: 520px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <nav>
+      <div class="mark">Chess Coach · Docs</div>
+      <h1>Architecture</h1>
+      <p>How the board, engine, and coach talk to each other.</p>
+      <ol>
+        <li><a href="#runtime">1. Runtime map</a></li>
+        <li><a href="#state">2. Client state</a></li>
+        <li><a href="#move">3. A move on the board</a></li>
+        <li><a href="#auto">4. Auto-opponent</a></li>
+        <li><a href="#eval">5. Eval bar and arrows</a></li>
+        <li><a href="#coach">6. Coach stream</a></li>
+        <li><a href="#puzzle">7. Puzzle engine</a></li>
+        <li><a href="#prompts">8. Prompt sources</a></li>
+        <li><a href="#files">9. Files</a></li>
+      </ol>
+      <div class="repo-links">
+        <a href="https://github.com/murderszn/chess-coach">GitHub repo</a>
+        <a href="https://github.com/murderszn/chess-coach#readme">README</a>
+      </div>
+    </nav>
+
+    <main>
+      <header class="hero">
+        <div class="mark">GM Julian Vance</div>
+        <h2>Sicilian Dragon Chess Coach</h2>
+        <p>
+          Two jobs, split cleanly. The board is legal chess plus a search stack
+          (Lichess masters, Stockfish 18 WASM, then a local fallback). The words
+          are Ollama Gemma 4, prompted with the live FEN. Express never plays chess
+          itself — it proxies chat and queues engine jobs.
+        </p>
+        <div class="chips">
+          <span class="chip">Express :3030</span>
+          <span class="chip">Ollama gemma4</span>
+          <span class="chip">Stockfish 18 NNUE</span>
+          <span class="chip">Lichess Masters</span>
+          <span class="chip">chess.js</span>
+        </div>
+      </header>
+
+      <section class="card" id="runtime">
+        <h3>1. Runtime map</h3>
+        <p class="lead">
+          The browser owns UI state. <code>POST /api/chat</code> streams coaching.
+          <code>POST /api/engine/bestmove</code> asks Lichess first (early book), then Stockfish.
+        </p>
+        <div class="diagram">
+          <pre class="mermaid">
+flowchart LR
+  subgraph Browser["Browser — public/"]
+    UI["index.html + style.css"]
+    App["app.js"]
+    ChessJS["vendor/chess.min.js"]
+    Pieces["pieces.js SVG set"]
+    LocalEval["evaluateBoardState fallback"]
+    UI --> App
+    App --> ChessJS
+    App --> Pieces
+    App --> LocalEval
+  end
+
+  subgraph Server["Node — server.js :3030"]
+    Static["express.static /public"]
+    Health["GET /api/health"]
+    Chat["POST /api/chat"]
+    Prompt["buildSystemPrompt"]
+    Engine["POST /api/engine/bestmove"]
+    Queue["Stockfish job queue"]
+    Chat --> Prompt
+    Engine --> Queue
+  end
+
+  subgraph LocalLLM["Ollama :11434"]
+    Tags["GET /api/tags"]
+    OllamaChat["POST /api/chat stream"]
+    Model["gemma4:latest"]
+    OllamaChat --> Model
+  end
+
+  subgraph Search["Search stack"]
+    Lichess["Lichess explorer.lichess.ovh/masters"]
+    SF["Stockfish 18 WASM NNUE"]
+  end
+
+  User["Student"] --> UI
+  App -->|"messages + board_context"| Chat
+  Chat --> OllamaChat
+  OllamaChat -->|"token NDJSON"| Chat
+  Chat -->|"SSE data: content"| App
+  Health --> Tags
+  App -->|"FEN, depth, use_book"| Engine
+  Engine --> Lichess
+  Engine --> SF
+          </pre>
+        </div>
+      </section>
+
+      <section class="card" id="state">
+        <h3>2. Client state</h3>
+        <p class="lead">
+          <code>currentRepertoire</code> is <code>black_dragon</code> or <code>white_attack</code>.
+          <code>currentMode</code> is <code>tabiya</code> or <code>puzzle</code>.
+          <code>moveHistory[]</code> is the game tree. <code>conversationHistory[]</code> is what Gemma sees.
+        </p>
+        <div class="diagram">
+          <pre class="mermaid">
+stateDiagram-v2
+  [*] --> Boot: DOMContentLoaded
+  Boot --> TheoryBlack: setRepertoire black_dragon
+
+  TheoryBlack --> TheoryWhite: Black / White toggle
+  TheoryWhite --> TheoryBlack
+  TheoryBlack --> PuzzleBlack: Puzzles mode
+  TheoryWhite --> PuzzleWhite: Puzzles mode
+  PuzzleBlack --> TheoryBlack: Theory mode
+  PuzzleWhite --> TheoryWhite: Theory mode
+
+  state TheoryBlack {
+    [*] --> LoadTabiya
+    LoadTabiya --> StudentToMove
+    StudentToMove --> AutoOpp: legal student move + AUTO on
+    AutoOpp --> StudentToMove: engine or book reply
+    StudentToMove --> CoachStream: AUTO off
+    AutoOpp --> CoachStream: after reply
+  }
+
+  state PuzzleBlack {
+    [*] --> LoadPuzzleFen
+    LoadPuzzleFen --> TryMove
+    TryMove --> UndoWrong: SAN not in solutionMoves
+    UndoWrong --> TryMove
+    TryMove --> OppScript: correct + scripted opp
+    OppScript --> TryMove
+    TryMove --> Solved: last step correct
+  }
+          </pre>
+        </div>
+      </section>
+
+      <section class="card" id="move">
+        <h3>3. A move on the board</h3>
+        <p class="lead">
+          Click, drag, a candidate chip, or a clickable SAN pill all land in
+          <code>handleMoveAttempt(from, to)</code>. chess.js is the only legal-move authority.
+        </p>
+        <div class="diagram">
+          <pre class="mermaid">
+flowchart TD
+  Input["Click square, drop piece, candidate chip, or chat SAN"] --> Attempt["handleMoveAttempt from, to"]
+  Attempt --> Legal{"chess.move OK?"}
+  Legal -->|no| Reselect["Select that piece if it is side to move, else clear"]
+  Legal -->|yes| Commit["Push moveHistory, play SFX, renderBoard"]
+  Commit --> UIRefresh["renderMovesList, renderArrows, updateEvalBar, classifyMove"]
+  UIRefresh --> GameOver{"chess.game_over?"}
+  GameOver -->|yes| Modal["Game-over modal + coach recap"]
+  GameOver -->|no| Mode{"currentMode"}
+  Mode -->|puzzle| Puzzle["handlePuzzleMove"]
+  Mode -->|tabiya| AutoQ{"AUTO on and opponent to move?"}
+  AutoQ -->|yes| Opp["triggerAutoOpponentResponse"]
+  AutoQ -->|no| Coach["Push analysis prompt, streamResponseFromOllama"]
+          </pre>
+        </div>
+      </section>
+
+      <section class="card" id="auto">
+        <h3>4. Auto-opponent</h3>
+        <p class="lead">
+          After a 450ms pause the client asks the server engine. If that fails,
+          it falls back to the hardcoded opening book, then the local heuristic search.
+        </p>
+        <div class="diagram">
+          <pre class="mermaid">
+flowchart TD
+  Trigger["triggerAutoOpponentResponse"] --> Gate{"AUTO on, not player turn, not game over?"}
+  Gate -->|no| Stop["Return"]
+  Gate -->|yes| Wait["450ms think delay"]
+  Wait --> API["POST /api/engine/bestmove FEN depth 14"]
+  API --> Masters{"Early game and Lichess masters hit?"}
+  Masters -->|yes| Play["Play top master SAN"]
+  Masters -->|no or error| SF["queryStockfish queued WASM"]
+  SF --> Have{"bestmove UCI?"}
+  Have -->|yes| Play
+  Have -->|no| Local["pickAutoOpponentMove"]
+  Local --> BookHist{"OPENING_BOOK exact SAN history?"}
+  BookHist -->|hit| Play
+  BookHist -->|miss| BookTac{"OPENING_BOOK last SAN?"}
+  BookTac -->|hit| Play
+  BookTac -->|miss| Heuristic["calculatePositionSuggestions"]
+  Heuristic --> Play
+  Play --> Refresh["Render + classify + eval"]
+  Refresh --> Over{"Game over?"}
+  Over -->|yes| Modal["checkGameOverStatus"]
+  Over -->|no| Narrate["Hidden prompt: student played X, opponent answered Y"]
+  Narrate --> Stream["streamResponseFromOllama"]
+          </pre>
+        </div>
+      </section>
+
+      <section class="card" id="eval">
+        <h3>5. Eval bar and arrows</h3>
+        <p class="lead">
+          The eval bar paints the local score immediately, then overwrites it with
+          Stockfish after 150ms (<code>use_book: false</code>). Arrows still mix coach
+          advice, puzzle targets, and the local suggestion cache.
+        </p>
+        <div class="diagram">
+          <pre class="mermaid">
+flowchart LR
+  Fen["Current chess.js FEN"] --> Instant["Local evaluateBoardState"]
+  Instant --> Paint["applyEvalBarScore now"]
+  Fen --> Debounce["150ms debounce"]
+  Debounce --> SF["POST /api/engine/bestmove depth 10"]
+  SF --> Paint2["Overwrite bar with eval_score"]
+
+  Fen --> Arrows["renderArrows"]
+  Arrows --> Hint["Blue / gold: custom hint"]
+  Arrows --> Puzzle["Gold: puzzle target SAN"]
+  Arrows --> CoachArr["Coach advice arrow"]
+  Arrows --> LocalBest["Green / gold: local best"]
+  Arrows --> Threat["Red: opponent threat"]
+          </pre>
+        </div>
+      </section>
+
+      <section class="card" id="coach">
+        <h3>6. Coach stream</h3>
+        <p class="lead">
+          Every coaching turn rebuilds a system prompt from the live board.
+          Replies are constrained to 2–4 sentences, no emojis, exact notation.
+        </p>
+        <div class="diagram">
+          <pre class="mermaid">
+sequenceDiagram
+  autonumber
+  actor Student
+  participant App as app.js
+  participant API as POST /api/chat
+  participant Prompt as buildSystemPrompt
+  participant Ollama as Ollama /api/chat
+
+  Student->>App: Chat send, Ask Coach, Explain Move, or auto prompt
+  App->>App: getCurrentBoardContext FEN, SAN, repertoire, mode
+  App->>API: messages + board_context
+  API->>Prompt: repertoire, mode, explaining_move
+  Prompt-->>API: system GM Julian Vance
+  API->>Ollama: system + conversationHistory stream true
+  loop Tokens
+    Ollama-->>API: NDJSON message.content
+    API-->>App: SSE data content
+    App-->>Student: Grow iMessage bubble, format SAN pills
+  end
+  Ollama-->>API: done
+  API-->>App: data DONE
+  App->>App: Push assistant turn onto conversationHistory
+          </pre>
+        </div>
+        <p class="note">
+          Dragon prompts stress <code>...Rxc3</code>, the g7 bishop, c4, and <code>...d5</code>.
+          White 1.e4 prompts stress f7, Fried Liver, Evans, Morra, and Grand Prix.
+          Native <code>fetch</code> is saved before Stockfish WASM loads so chat streaming still works.
+        </p>
+      </section>
+
+      <section class="card" id="puzzle">
+        <h3>7. Puzzle engine</h3>
+        <p class="lead">
+          Puzzles are scripted SAN lists, not Stockfish. A wrong try is undone.
+          Hint draws a blue arrow and shows canned text — it does not call Ollama.
+        </p>
+        <div class="diagram">
+          <pre class="mermaid">
+flowchart TD
+  Load["loadPuzzle: chess.load FEN, wipe history"] --> Play["Student move"]
+  Play --> Match{"SAN in solutionMoves step.player?"}
+  Match -->|no| Undo["SFX mistake, undo after 700ms"]
+  Undo --> Play
+  Match -->|yes| Next["SFX brilliant, step++"]
+  Next --> Opp{"step.opp set?"}
+  Opp -->|yes| Script["Play scripted reply after 500ms"]
+  Script --> Play
+  Opp -->|no last step| Win["handlePuzzleSolved: score, explanation, coach stream"]
+  Hint["Hint button"] --> Arrow["Blue arrow on first accepted SAN"]
+  Hint --> HintText["Show puzzle.hint, skip Ollama"]
+  Reveal["Solution button"] --> Win
+          </pre>
+        </div>
+      </section>
+
+      <section class="card" id="prompts">
+        <h3>8. Prompt sources</h3>
+        <p class="lead">
+          Almost everything goes through <code>streamResponseFromOllama</code>.
+          Explain Move posts the same <code>/api/chat</code> shape itself and sets <code>explaining_move</code>.
+        </p>
+        <div class="diagram">
+          <pre class="mermaid">
+flowchart TB
+  subgraph Sources["What creates a coach turn"]
+    A["Sidebar iMessage send"]
+    B["Ask Coach button"]
+    C["Explain Move button"]
+    D["Tactic chip"]
+    E["Student move with AUTO off"]
+    F["After auto-opponent reply"]
+    G["Load tabiya / puzzle with triggerCoachPrompt"]
+    H["Puzzle solved"]
+    I["Game over"]
+  end
+
+  A --> Stream["streamResponseFromOllama"]
+  B --> Stream
+  D --> Stream
+  E --> Stream
+  F --> Stream
+  G --> Stream
+  H --> Stream
+  I --> Stream
+  C --> Explain["Dedicated fetch with explaining_move"]
+  Stream --> Board["Attach getCurrentBoardContext"]
+  Explain --> Board
+          </pre>
+        </div>
+      </section>
+
+      <section class="card" id="files">
+        <h3>9. Files</h3>
+        <table>
+          <thead>
+            <tr><th>Path</th><th>Role</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>server.js</code></td><td>Static files, health, chat proxy, Stockfish queue, Lichess book</td></tr>
+            <tr><td><code>public/index.html</code></td><td>Golden-ratio board + iMessage sidebar</td></tr>
+            <tr><td><code>public/app.js</code></td><td>Game tree, puzzles, eval, arrows, streaming</td></tr>
+            <tr><td><code>public/pieces.js</code></td><td>SVG piece set</td></tr>
+            <tr><td><code>public/vendor/chess.min.js</code></td><td>Legal moves, FEN, PGN</td></tr>
+            <tr><td><code>test_coach_suite.js</code></td><td>Live coach role-play against <code>/api/chat</code></td></tr>
+            <tr><td><code>docs/index.html</code></td><td>This architecture page (GitHub Pages)</td></tr>
+          </tbody>
+        </table>
+        <p class="note">
+          REVIEW and PGN controls exist in the HTML and are queried as DOM refs,
+          but they are not wired to handlers yet.
+        </p>
+      </section>
+
+      <footer>
+        Hosted from the <code>docs/</code> folder on
+        <a href="https://github.com/murderszn/chess-coach">murderszn/chess-coach</a>
+        via GitHub Pages.
+      </footer>
+    </main>
+  </div>
+</body>
+</html>
