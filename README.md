@@ -16,7 +16,7 @@ The board is a Greco-Roman / Chess.com-style arena (Carrara ivory and Verona gre
 - **Spar against a built-in opponent** that follows opening book, then a fast in-browser search.
 - **Talk to the coach** in the sidebar; every request includes live board context so answers stay on the actual position.
 - **Drill tactics** in puzzle / master-test mode with hints, solutions, and a per-repertoire score.
-- **Review games** with accuracy-style reports, an eval ribbon, and PGN import (including a few classic sample games).
+- **Review the live game** with an eval ribbon and a game-over recap from the coach. Review/PGN *modals* are in the HTML but not hooked up yet.
 
 ---
 
@@ -58,13 +58,11 @@ Per repertoire: Dragon exchange sac, `...d5` strike, Chinese `...b4`, Soltis `Nx
 
 Hint, reveal solution, prev/next, and a running score.
 
-### Game review & PGN
+### Game over
 
-- Post-game / on-demand review modal with accuracy gauges, move-quality table, clickable eval graph, turning-point card
-- Import PGN from Chess.com / Lichess / pasted notation
-- Quick-load classics: Kasparov–Anand 1995, Fischer–Larsen 1958, Morphy Opera 1858, Kasparov–Topalov 1999
-- Optional auto-review and auto-orient after import
-- Export annotated PGN from the review modal
+- Checkmate / draw modal with rematch
+- Coach streams a short post-game recap
+- **REVIEW** and **PGN** controls are present in the UI (`index.html`) and cached as DOM refs, but `app.js` does not open those modals or parse PGN yet
 
 ### Auto-opponent
 
@@ -128,23 +126,53 @@ PORT=8080 OLLAMA_HOST=http://127.0.0.1:11434 npm start
 3. Play on the board. With **AUTO** on, the opponent replies and the coach comments.
 4. Use the sidebar or **Ask Coach** / **Explain Move** for analysis.
 5. Switch to **Puzzles** for master tests; use Hint / Solution as needed.
-6. **PGN** loads an external game; **REVIEW** opens the accuracy report.
-7. Toggle arrows, master stats, sound, and auto-play from the tool island.
+6. Toggle arrows, master stats, sound, and auto-play from the tool island.
 
 ---
 
-## Architecture
+## How it works
 
-```
-┌─────────────┐     SSE / JSON      ┌──────────────┐     stream      ┌─────────────┐
-│  Browser    │ ──────────────────► │  Express     │ ──────────────► │  Ollama     │
-│  public/    │ ◄────────────────── │  server.js   │ ◄────────────── │  :11434     │
-│  app.js     │                     │  :3030       │                 │  gemma4     │
-└─────────────┘                     └──────────────┘                 └─────────────┘
-       │
-       ├── chess.min.js     legal moves, FEN / PGN
-       ├── pieces.js        SVG piece set
-       └── in-browser eval  material + PST + repertoire heuristics
+Two engines sit next to each other. **chess.js + a local heuristic search** own the board (legal moves, eval bar, arrows, auto-opponent). **Ollama Gemma 4** owns the words. Express only serves static files and proxies chat; it never searches chess.
+
+Game-review and PGN buttons exist in `index.html` and are queried in `app.js`, but they are not wired to handlers yet. Everything below is the live path.
+
+### 1. Runtime map
+
+```mermaid
+flowchart LR
+  subgraph Browser["Browser — public/"]
+    UI["index.html + style.css"]
+    App["app.js"]
+    ChessJS["vendor/chess.min.js"]
+    Pieces["pieces.js SVG set"]
+    Eval["evaluateBoardState + PST"]
+    UI --> App
+    App --> ChessJS
+    App --> Pieces
+    App --> Eval
+  end
+
+  subgraph Server["Node — server.js :3030"]
+    Static["express.static /public"]
+    Health["GET /api/health"]
+    Chat["POST /api/chat"]
+    Prompt["buildSystemPrompt"]
+    Chat --> Prompt
+  end
+
+  subgraph LocalLLM["Ollama :11434"]
+    Tags["GET /api/tags"]
+    OllamaChat["POST /api/chat stream"]
+    Model["gemma4:latest"]
+    OllamaChat --> Model
+  end
+
+  User["Student"] --> UI
+  App -->|"JSON messages + board_context"| Chat
+  Chat -->|"Ollama chat + system prompt"| OllamaChat
+  OllamaChat -->|"token NDJSON"| Chat
+  Chat -->|"SSE data: content"| App
+  Health --> Tags
 ```
 
 | Path | Role |
@@ -152,13 +180,189 @@ PORT=8080 OLLAMA_HOST=http://127.0.0.1:11434 npm start
 | `server.js` | Static files, `/api/health`, `/api/chat` proxy + coach system prompt |
 | `public/index.html` | Golden-ratio split: board (~62%) and iMessage sidebar (~38%) |
 | `public/style.css` | Greco-Roman design system, board, modals |
-| `public/app.js` | Game tree, puzzles, eval, arrows, review, chat streaming |
+| `public/app.js` | Game tree, puzzles, eval, arrows, chat streaming |
 | `public/pieces.js` | Vector SVG pieces |
 | `public/vendor/chess.min.js` | chess.js for validation and FEN/PGN |
 | `public/assets/` | Colonnade background and coach avatar |
 | `test_coach_suite.js` | Live coach role-play checks against `/api/chat` |
 
-Board evaluation and auto-play run **in the browser**. The npm `stockfish` package is listed for a future engine hookup; the live eval bar is not Stockfish yet.
+The npm `stockfish` package is listed for a future engine hookup. The live eval bar is **not** Stockfish.
+
+### 2. Client state
+
+```mermaid
+stateDiagram-v2
+  [*] --> Boot: DOMContentLoaded
+  Boot --> TheoryBlack: setRepertoire black_dragon
+
+  TheoryBlack --> TheoryWhite: Black / White toggle
+  TheoryWhite --> TheoryBlack
+  TheoryBlack --> PuzzleBlack: Puzzles mode
+  TheoryWhite --> PuzzleWhite: Puzzles mode
+  PuzzleBlack --> TheoryBlack: Theory mode
+  PuzzleWhite --> TheoryWhite: Theory mode
+
+  state TheoryBlack {
+    [*] --> LoadTabiya
+    LoadTabiya --> StudentToMove
+    StudentToMove --> AutoWhite: legal student move + AUTO on
+    AutoWhite --> StudentToMove: book or search reply
+    StudentToMove --> CoachStream: AUTO off
+    AutoWhite --> CoachStream: after reply
+  }
+
+  state PuzzleBlack {
+    [*] --> LoadPuzzleFen
+    LoadPuzzleFen --> TryMove
+    TryMove --> UndoWrong: SAN not in solutionMoves
+    UndoWrong --> TryMove
+    TryMove --> OppScript: correct + scripted opp
+    OppScript --> TryMove
+    TryMove --> Solved: last step correct
+  }
+```
+
+`currentRepertoire` is `black_dragon` or `white_attack`. `currentMode` is `tabiya` or `puzzle`. `moveHistory[]` is the game tree (`san`, `fen`, `from`, `to`). `currentMoveIndex` is the ply you are looking at. `conversationHistory[]` is what gets sent to Ollama.
+
+### 3. A move on the board
+
+```mermaid
+flowchart TD
+  Input["Click square, drop piece, candidate chip, or chat SAN"] --> Attempt["handleMoveAttempt from, to"]
+  Attempt --> Legal{"chess.move OK?"}
+  Legal -->|no| Reselect["Select that piece if it is side to move, else clear"]
+  Legal -->|yes| Commit["Push moveHistory, play SFX, renderBoard"]
+  Commit --> UIRefresh["renderMovesList, renderArrows, updateEvalBar, classifyMove, updateMasterStats"]
+  UIRefresh --> GameOver{"chess.game_over?"}
+  GameOver -->|yes| Modal["Game-over modal + coach recap"]
+  GameOver -->|no| Mode{"currentMode"}
+  Mode -->|puzzle| Puzzle["handlePuzzleMove"]
+  Mode -->|tabiya| AutoQ{"AUTO on and opponent to move?"}
+  AutoQ -->|yes| Opp["triggerAutoOpponentResponse after 650ms"]
+  AutoQ -->|no| Coach["Push analysis prompt, streamResponseFromOllama"]
+```
+
+Click-to-move: first click selects a piece of the side to move and shows legal dots; second click tries the move. Drag-and-drop uses the same `handleMoveAttempt`. Chat SAN that matches a legal move also calls it.
+
+### 4. Auto-opponent
+
+```mermaid
+flowchart TD
+  Trigger["triggerAutoOpponentResponse lastPlayerSan"] --> Gate{"AUTO on, not player turn, not game over?"}
+  Gate -->|no| Stop["Return"]
+  Gate -->|yes| Wait["650ms think delay"]
+  Wait --> Pick["pickAutoOpponentMove"]
+  Pick --> BookHist{"OPENING_BOOK exact SAN history?"}
+  BookHist -->|hit| Play["chess.move book SAN"]
+  BookHist -->|miss| BookTac{"OPENING_BOOK last SAN e.g. Rxc3?"}
+  BookTac -->|hit| Play
+  BookTac -->|miss| Search["calculatePositionSuggestions bestMove"]
+  Search --> Play
+  Play --> Refresh["Render + classify + eval"]
+  Refresh --> Over{"Game over?"}
+  Over -->|yes| Modal["checkGameOverStatus"]
+  Over -->|no| Narrate["Hidden user prompt: student played X, opponent answered Y"]
+  Narrate --> Stream["streamResponseFromOllama"]
+```
+
+Book is hardcoded Dragon / Italian / Evans sequences. Search is one ply of every legal move, plus a short tactical look at the opponent’s captures and checks, with bonuses for `Nxf7`, `Rxc3`, `Qf3+`, `...Nc4`, `...d5`. Results are memoized by FEN.
+
+### 5. Eval bar and arrows
+
+```mermaid
+flowchart LR
+  Fen["Current chess.js FEN"] --> Cache{"positionSuggestionsCache hit?"}
+  Cache -->|yes| Use["Reuse best / threat / top 3"]
+  Cache -->|no| Score["evaluateBoardState"]
+  Score --> Mat["Material + knight/pawn PST + bishop pair"]
+  Mat --> Theme["Dragon g7 bishop, c4 knight, doubled c-pawns, Fried Liver f7/e6"]
+  Theme --> Rank["Sort legal moves, pick best + threat"]
+  Rank --> Use
+  Use --> Bar["updateEvalBar: score / 100, clamp ±5"]
+  Use --> Arrows["renderArrows"]
+  Arrows --> Green["Green = best"]
+  Arrows --> Gold["Gold = sac best or Explain Move"]
+  Arrows --> Red["Red = opponent threat"]
+  Arrows --> Blue["Blue = puzzle hint"]
+```
+
+### 6. Coach stream
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor Student
+  participant App as app.js
+  participant API as POST /api/chat
+  participant Prompt as buildSystemPrompt
+  participant Ollama as Ollama /api/chat
+
+  Student->>App: Chat send, Ask Coach, Explain Move, or auto prompt
+  App->>App: getCurrentBoardContext FEN, SAN, repertoire, mode, legal moves
+  App->>API: messages + board_context
+  API->>Prompt: repertoire, mode, explaining_move, game_review
+  Prompt-->>API: system: GM Julian Vance, 2-4 sentences, no emojis
+  API->>Ollama: system + conversationHistory, stream true
+  loop Tokens
+    Ollama-->>API: NDJSON message.content
+    API-->>App: SSE data content
+    App-->>Student: Grow iMessage bubble, format SAN pills
+  end
+  Ollama-->>API: done
+  API-->>App: data DONE
+  App->>App: Push assistant turn onto conversationHistory
+```
+
+`buildSystemPrompt` also swaps theory text: Dragon (`...Rxc3`, g7 bishop, c4, `...d5`) vs White 1.e4 (f7, Fried Liver, Evans, Morra, Grand Prix). Puzzle mode asks for hints that do not spoil the move. Explain-Move mode asks for a 3-sentence tactical / structural / alternative note.
+
+### 7. Puzzle engine
+
+```mermaid
+flowchart TD
+  Load["loadPuzzle: chess.load FEN, wipe history"] --> Play["Student move"]
+  Play --> Match{"SAN in solutionMoves step.player?"}
+  Match -->|no| Undo["SFX mistake, undo after 700ms, hint coach bubble"]
+  Undo --> Play
+  Match -->|yes| Next["SFX brilliant, step++"]
+  Next --> Opp{"step.opp set?"}
+  Opp -->|yes| Script["Play scripted reply after 500ms"]
+  Script --> Play
+  Opp -->|no last step| Win["handlePuzzleSolved: score Set, explanation, coach stream"]
+  Hint["Hint button"] --> Arrow["Blue arrow on first accepted SAN"]
+  Hint --> HintText["Show puzzle.hint, do not call Ollama"]
+  Reveal["Solution button"] --> Win
+```
+
+### 8. Prompt sources
+
+Anything that talks to Gemma goes through `streamResponseFromOllama` except **Explain Move**, which posts the same `/api/chat` shape itself and sets `explaining_move`.
+
+```mermaid
+flowchart TB
+  subgraph Sources["What creates a coach turn"]
+    A["Sidebar iMessage send"]
+    B["Ask Coach button"]
+    C["Explain Move button"]
+    D["Tactic chip"]
+    E["Student move with AUTO off"]
+    F["After auto-opponent reply"]
+    G["Load tabiya / puzzle with triggerCoachPrompt"]
+    H["Puzzle solved"]
+    I["Game over"]
+  end
+
+  A --> Stream["streamResponseFromOllama"]
+  B --> Stream
+  D --> Stream
+  E --> Stream
+  F --> Stream
+  G --> Stream
+  H --> Stream
+  I --> Stream
+  C --> Explain["Dedicated fetch with explaining_move"]
+  Stream --> Board["Attach getCurrentBoardContext"]
+  Explain --> Board
+```
 
 ---
 

@@ -861,6 +861,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const evaluatedMoves = [];
 
+    // Prioritize canonical repertoire book move if available
+    const fullHistory = getMoveHistorySanString();
+    const bookSan = OPENING_BOOK[fullHistory] || (moveHistory[currentMoveIndex] ? OPENING_BOOK[moveHistory[currentMoveIndex].san] : null);
+    let bookMoveObj = null;
+    if (bookSan) {
+      bookMoveObj = legalMoves.find(m => m.san === bookSan || m.san.replace(/[+#]/, '') === bookSan);
+    }
+
     for (const move of legalMoves) {
       chess.move(move);
       const score = evaluateBoardState(chess);
@@ -879,8 +887,11 @@ document.addEventListener('DOMContentLoaded', () => {
       chess.undo();
 
       let tacticalBonus = 0;
-      if (move.san.includes('Nxf7') || move.san.includes('Rxc3')) tacticalBonus = 180;
-      if (move.san.includes('Qf3+') || move.to === 'c4' || move.san === 'd5') tacticalBonus = 60;
+      if (bookMoveObj && (move.from === bookMoveObj.from && move.to === bookMoveObj.to)) {
+        tacticalBonus += 500; // Strongest priority for master book line
+      }
+      if (move.san.includes('Nxf7') || move.san.includes('Rxc3')) tacticalBonus += 180;
+      if (move.san.includes('Qf3+') || move.to === 'c4' || move.san === 'd5') tacticalBonus += 80;
 
       const adjustedScore = isWhite ? (score + tacticalBonus) : (score - tacticalBonus);
 
@@ -1053,6 +1064,7 @@ document.addEventListener('DOMContentLoaded', () => {
     activePuzzleKey = puzzleKey;
     activePuzzleStepIndex = 0;
     customHintArrow = null;
+    coachAdviceArrow = null;
 
     chess.load(puzzle.fen);
     moveHistory = [];
@@ -1341,28 +1353,55 @@ document.addEventListener('DOMContentLoaded', () => {
     };
   }
 
+  let coachAdviceArrow = null;
+
   function renderArrows() {
     arrowPathsGroup.innerHTML = '';
     if (!arrowsEnabled || chess.game_over()) return;
 
-    const suggestions = calculatePositionSuggestions();
     const arrowsToDraw = [];
 
+    // 1. Custom Hover / Hint Arrow (highest priority)
     if (customHintArrow) {
       arrowsToDraw.push(customHintArrow);
     }
 
-    if (suggestions.bestMove) {
-      const isSac = suggestions.bestMove.san.includes('Nxf7') || suggestions.bestMove.san.includes('Rxc3') || suggestions.bestMove.san.includes('b4');
-      arrowsToDraw.push({
-        from: suggestions.bestMove.from,
-        to: suggestions.bestMove.to,
-        color: isSac ? 'gold' : 'green',
-        desc: `Best: ${suggestions.bestMove.san}`
-      });
+    // 2. Puzzle Mode: Solution Move Arrow
+    if (currentMode === 'puzzle') {
+      const puzzle = REPERTOIRE_PUZZLES[currentRepertoire][activePuzzleKey];
+      if (puzzle && puzzle.solutionMoves && puzzle.solutionMoves[activePuzzleStepIndex]) {
+        const solSan = puzzle.solutionMoves[activePuzzleStepIndex];
+        const legal = chess.moves({ verbose: true });
+        const matched = legal.find(m => m.san === solSan || m.san.replace(/[+#]/, '') === solSan.replace(/[+#]/, ''));
+        if (matched) {
+          arrowsToDraw.push({
+            from: matched.from,
+            to: matched.to,
+            color: 'gold',
+            desc: `Puzzle Target: ${matched.san}`
+          });
+        }
+      }
+    } else if (coachAdviceArrow) {
+      // 3. Coach Vance Advice Arrow
+      arrowsToDraw.push(coachAdviceArrow);
+    } else {
+      // 4. Primary Stockfish 18 / Canonical Opening Book Suggestion Arrow
+      const suggestions = calculatePositionSuggestions();
+      if (suggestions.bestMove) {
+        const isSac = suggestions.bestMove.san.includes('Nxf7') || suggestions.bestMove.san.includes('Rxc3') || suggestions.bestMove.san.includes('b4');
+        arrowsToDraw.push({
+          from: suggestions.bestMove.from,
+          to: suggestions.bestMove.to,
+          color: isSac ? 'gold' : 'green',
+          desc: `Best: ${suggestions.bestMove.san}`
+        });
+      }
     }
 
-    if (suggestions.threatMove) {
+    // 5. Opponent Threat Arrow (Red)
+    const suggestions = calculatePositionSuggestions();
+    if (suggestions.threatMove && (!customHintArrow || suggestions.threatMove.to !== customHintArrow.to)) {
       arrowsToDraw.push({
         from: suggestions.threatMove.from,
         to: suggestions.threatMove.to,
@@ -1506,6 +1545,7 @@ document.addEventListener('DOMContentLoaded', () => {
     chess.reset();
     moveHistory = [];
     customHintArrow = null;
+    coachAdviceArrow = null;
     gameOverModal.classList.remove('active');
 
     preset.moves.forEach(san => {
@@ -1862,6 +1902,7 @@ document.addEventListener('DOMContentLoaded', () => {
       selectedSquare = null;
       legalMovesForSelected = [];
       customHintArrow = null;
+      coachAdviceArrow = null;
 
       if (chess.in_check()) {
         playChessSound('check');
@@ -2262,7 +2303,30 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Click delegation for moves mentioned in Coach Vance's iMessage chat
+  function extractLegalMovesFromText(text) {
+    if (!text) return [];
+    const legalMoves = chess.moves({ verbose: true });
+    const matched = [];
+    const movePattern = /(?:(\b\d{1,3}(?:\.\.\.|\.)\s*)?([KQRBN]?[a-h]?[1-8]?x?[a-h][1-8](?:=[QRBN])?[\+#]?(?:[\!\?]{1,2})?|O-O-O[\!\?]{0,2}|O-O[\!\?]{0,2}|0-0-0[\!\?]{0,2}|0-0[\!\?]{0,2}|\.\.\.[a-zA-Z0-9\+\#\=\-\!\?]+))/g;
+    const matches = text.match(movePattern) || [];
+
+    for (const m of matches) {
+      let clean = m.replace(/^\d+[\.\s]+/, '').replace(/^(\.\.\.|\u2026)\s*/, '').replace(/[\!\?]/g, '').trim();
+      clean = clean.replace(/0-0-0/g, 'O-O-O').replace(/0-0/g, 'O-O');
+      const found = legalMoves.find(lm => 
+        lm.san === clean || 
+        lm.san.replace(/[+#]/, '') === clean.replace(/[+#]/, '') ||
+        lm.san.toLowerCase() === clean.toLowerCase() ||
+        (lm.from + lm.to) === clean.toLowerCase()
+      );
+      if (found && !matched.some(x => x.san === found.san)) {
+        matched.push(found);
+      }
+    }
+    return matched;
+  }
+
+  // Click & Hover delegation for moves mentioned in Coach Vance's iMessage chat
   messagesContainer.addEventListener('click', (e) => {
     const pill = e.target.closest('.clickable-move-pill');
     if (!pill) return;
@@ -2270,6 +2334,31 @@ document.addEventListener('DOMContentLoaded', () => {
     e.stopPropagation();
     const rawMove = pill.getAttribute('data-move') || pill.textContent;
     handleChatMoveClick(rawMove);
+  });
+
+  messagesContainer.addEventListener('mouseover', (e) => {
+    const pill = e.target.closest('.clickable-move-pill');
+    if (!pill) return;
+    const rawMove = pill.getAttribute('data-move') || pill.textContent;
+    const detected = extractLegalMovesFromText(rawMove);
+    if (detected.length > 0) {
+      const m = detected[0];
+      customHintArrow = {
+        from: m.from,
+        to: m.to,
+        color: 'blue',
+        desc: `Preview: ${m.san}`
+      };
+      renderArrows();
+    }
+  });
+
+  messagesContainer.addEventListener('mouseout', (e) => {
+    const pill = e.target.closest('.clickable-move-pill');
+    if (pill && customHintArrow) {
+      customHintArrow = null;
+      renderArrows();
+    }
   });
 
   function scrollToBottom() {
@@ -2355,6 +2444,22 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       conversationHistory.push({ role: 'assistant', content: fullAssistantReply });
+
+      // Synchronize arrows to match Coach Vance's advice
+      if (currentMode !== 'puzzle') {
+        const detected = extractLegalMovesFromText(fullAssistantReply);
+        if (detected.length > 0) {
+          const topAdvice = detected[0];
+          const isSac = topAdvice.san.includes('Nxf7') || topAdvice.san.includes('Rxc3') || topAdvice.san.includes('b4');
+          coachAdviceArrow = {
+            from: topAdvice.from,
+            to: topAdvice.to,
+            color: isSac ? 'gold' : 'green',
+            desc: `Coach Advice: ${topAdvice.san}`
+          };
+          renderArrows();
+        }
+      }
 
     } catch (err) {
       removeTypingBubble();
