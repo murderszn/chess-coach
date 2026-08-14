@@ -1,6 +1,6 @@
 /**
  * Grandmaster Chess Coach (Julian Vance) — Sicilian Dragon Analysis
- * Deep Board-Aware Dynamic Coaching Engine with Live Eval, SVG Arrows, & Master Stats
+ * Deep Board-Aware Dynamic Coaching Engine with Live Eval, SVG Arrows, & Auto-Opponent Sparring
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -13,6 +13,35 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentMoveIndex = -1;
   let isStreaming = false;
   let arrowsEnabled = true;
+  let autoPlayOpponent = true; // Auto-play White's most likely response
+
+  // Opening Book Responses for Sicilian Dragon Tabiya
+  const DRAGON_BOOK_RESPONSES = {
+    // After 12.h4 in Yugoslav
+    'Nc4': 'Bxc4',
+    'h5': 'Bg5',
+    'Rxc3': 'bxc3',
+    'Qa5': 'Kb1',
+    'd5': 'exd5',
+    'a6': 'h5',
+    'b6': 'h5',
+    'Re8': 'h5',
+    'Qc7': 'Kb1',
+    // After 13.Bxc4
+    'Rxc4': 'h5',
+    // After 14.h5
+    'Nxh5': 'g4',
+    // After 15.g4
+    'Nf6': 'Nde2',
+    // After 16.Nde2
+    'Rfc8': 'Bh6',
+    'Qa5': 'Bh6',
+    // After 13.Bg5
+    'Rc4': 'Kb1',
+    // After 9.0-0-0 in central d5 line
+    'Nxd5': 'Nxd5',
+    'Qxd5': 'c4'
+  };
 
   // Sicilian Dragon Tabiya Presets with Master Stats & Tactical Arrows
   const TABIYA_PRESETS = {
@@ -135,7 +164,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const conversationHistory = [
     {
       role: 'assistant',
-      content: "Alright, let's analyze your Yugoslav Attack game. We have the critical tabiya after: 1.e4 c5 2.Nf3 d6 3.d4 cxd4 4.Nxd4 Nf6 5.Nc3 g6 6.Be3 Bg7 7.f3 0-0 8.Qd2 Nc6 9.Bc4 Bd7 10.0-0-0 Rc8 11.Bb3 Ne5 12.h4. Notice the live Threat Arrows on the board: White threatens to pry open the h-file with h5! and Bh6. Black has two master-level replies: the outpost jump 12...Nc4 or the 12...h5 Soltis blockade. Play a move on the board or ask me for calculation guidance! ♟️"
+      content: "Alright, let's analyze your Yugoslav Attack game. We have the critical tabiya after: 1.e4 c5 2.Nf3 d6 3.d4 cxd4 4.Nxd4 Nf6 5.Nc3 g6 6.Be3 Bg7 7.f3 0-0 8.Qd2 Nc6 9.Bc4 Bd7 10.0-0-0 Rc8 11.Bb3 Ne5 12.h4. Auto-Reply is ON: when you make a move on the board for Black, White will automatically respond with the most tested Grandmaster move, and I will break down the tactics for you! ♟️"
     }
   ];
 
@@ -156,8 +185,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const coordsRanks = document.getElementById('coords-ranks');
   const coordsFiles = document.getElementById('coords-files');
 
-  // New Intelligence Elements
+  // Intelligence & Sparring Elements
   const moveClassBadge = document.getElementById('move-class-badge');
+  const btnToggleAutoPlay = document.getElementById('btn-toggle-auto-play');
+  const autoPlayStateText = document.getElementById('auto-play-state-text');
   const btnToggleArrows = document.getElementById('btn-toggle-arrows');
   const arrowsStateText = document.getElementById('arrows-state-text');
   const btnToggleMasterStats = document.getElementById('btn-toggle-master-stats');
@@ -179,14 +210,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnResetSession = document.getElementById('btn-reset-session');
 
   // ==========================================================
-  // 1. Board Context & Evaluation Engine
+  // 1. Board Evaluation & Move Classification
   // ==========================================================
   function calculateEvaluation() {
-    // Evaluation heuristic for Sicilian Dragon positions
     let score = 0;
     const pieceValues = { p: 1, n: 3.1, b: 3.3, r: 5, q: 9.5, k: 0 };
     
-    // Count material
     const board = chess.board();
     for (let r = 0; r < 8; r++) {
       for (let f = 0; f < 8; f++) {
@@ -199,25 +228,21 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Sicilian Dragon Positional heuristics
-    // 1. Dragon bishop active on g7
     const g7Piece = chess.get('g7');
     if (g7Piece && g7Piece.type === 'b' && g7Piece.color === 'b') {
-      score -= 0.35; // Black advantage for active dragon bishop
+      score -= 0.35;
     }
 
-    // 2. Black Knight on c4 outpost
     const c4Piece = chess.get('c4');
     if (c4Piece && c4Piece.type === 'n' && c4Piece.color === 'b') {
-      score -= 0.5; // Strong outpost on c4
+      score -= 0.5;
     }
 
-    // 3. White h-pawn on h5
     const h5Piece = chess.get('h5');
     if (h5Piece && h5Piece.type === 'p' && h5Piece.color === 'w') {
-      score += 0.45; // Dangerous kingside pawn storm
+      score += 0.45;
     }
 
-    // 4. Black Rook on c-file
     const c8Piece = chess.get('c8');
     const c4Rook = chess.get('c4');
     if ((c8Piece && c8Piece.type === 'r' && c8Piece.color === 'b') || (c4Rook && c4Rook.type === 'r' && c4Rook.color === 'b')) {
@@ -232,7 +257,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const formattedScore = (rawScore > 0 ? `+${rawScore.toFixed(1)}` : rawScore.toFixed(1));
     evalScoreText.textContent = formattedScore;
 
-    // Convert score to percentage: 0 is 50%, +5 is 95%, -5 is 5%
     const clampedScore = Math.max(-5, Math.min(5, rawScore));
     const whiteHeight = 50 + (clampedScore / 5) * 45;
     const blackHeight = 100 - whiteHeight;
@@ -251,12 +275,12 @@ document.addEventListener('DOMContentLoaded', () => {
       setMoveClassification('brilliant', '!!', 'Brilliant Sac');
     } else if (san === 'Nc4' || san === 'h5' || san === 'd5') {
       setMoveClassification('great', '!', 'Great Move');
-    } else if (san === 'Bg5' || san === 'Kb1' || san === 'Qa5' || san === 'Bb3') {
+    } else if (san === 'Bxc4' || san === 'Bg5' || san === 'Kb1' || san === 'Qa5' || san === 'Bb3') {
       setMoveClassification('best', '⭐', 'Best Move');
     } else if (san === 'a6' || san === 'b6') {
       setMoveClassification('book', '✓', 'Book Move');
     } else {
-      setMoveClassification('best', '⭐', 'Book Theory');
+      setMoveClassification('best', '⭐', 'Book Move');
     }
   }
 
@@ -292,7 +316,82 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ==========================================================
-  // 2. Dynamic SVG Arrow Overlay Engine
+  // 2. White Auto-Opponent Response Engine
+  // ==========================================================
+  function pickWhiteBestMove(lastBlackSan) {
+    // 1. Check opening book lookup
+    if (lastBlackSan && DRAGON_BOOK_RESPONSES[lastBlackSan]) {
+      const bookSan = DRAGON_BOOK_RESPONSES[lastBlackSan];
+      const valid = chess.moves().find(m => m === bookSan || m.replace(/[+#]/, '') === bookSan);
+      if (valid) return valid;
+    }
+
+    // 2. Fallback heuristic evaluation
+    const legalMoves = chess.moves({ verbose: true });
+    if (legalMoves.length === 0) return null;
+
+    let bestMove = legalMoves[0];
+    let bestScore = -9999;
+
+    for (const move of legalMoves) {
+      chess.move(move);
+      const score = calculateEvaluation(); // White wants positive score
+      chess.undo();
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestMove = move;
+      }
+    }
+
+    return bestMove.san;
+  }
+
+  function triggerWhiteAutoResponse(lastBlackSan) {
+    if (!autoPlayOpponent || chess.turn() !== 'w' || chess.game_over()) return;
+
+    turnText.textContent = 'White is calculating...';
+    turnDot.className = 'turn-dot white';
+
+    setTimeout(() => {
+      if (chess.turn() !== 'w') return;
+
+      const whiteMoveSan = pickWhiteBestMove(lastBlackSan);
+      if (!whiteMoveSan) return;
+
+      const moveObj = chess.move(whiteMoveSan);
+      if (moveObj) {
+        moveHistory.push({
+          san: moveObj.san,
+          fen: chess.fen(),
+          from: moveObj.from,
+          to: moveObj.to
+        });
+        currentMoveIndex = moveHistory.length - 1;
+        renderBoard();
+        renderMovesList();
+        renderArrows();
+        updateEvalBar();
+        classifyMove(moveObj.san);
+
+        // Coach Vance automatic tactical coaching on White's response
+        if (!isStreaming) {
+          const prompt = `The student played "${lastBlackSan}" for Black, and White responded with "${moveObj.san}" (FEN: ${chess.fen()}). Provide sharp, constructive grandmaster commentary on White's move, explain Black's tactical choices next, and ask the student for their move!`;
+          conversationHistory.push({ role: 'user', content: prompt });
+          streamResponseFromOllama();
+        }
+      }
+    }, 750);
+  }
+
+  btnToggleAutoPlay.addEventListener('click', () => {
+    autoPlayOpponent = !autoPlayOpponent;
+    autoPlayStateText.textContent = autoPlayOpponent ? 'ON' : 'OFF';
+    btnToggleAutoPlay.classList.toggle('active-toggle', autoPlayOpponent);
+  });
+
+  // ==========================================================
+  // 3. Dynamic SVG Arrow Overlay Engine
   // ==========================================================
   function squareToSvgCoords(sq) {
     const file = sq[0];
@@ -305,7 +404,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (col === -1 || row === -1) return { x: 400, y: 400 };
 
-    const sqSize = 100; // 800 / 8
+    const sqSize = 100;
     return {
       x: col * sqSize + 50,
       y: row * sqSize + 50
@@ -323,7 +422,6 @@ document.addEventListener('DOMContentLoaded', () => {
       const from = squareToSvgCoords(arr.from);
       const to = squareToSvgCoords(arr.to);
 
-      // Shorten the end slightly so arrowhead fits cleanly in center of square
       const dx = to.x - from.x;
       const dy = to.y - from.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
@@ -356,7 +454,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // ==========================================================
-  // 3. Master Database Opening Stats
+  // 4. Master Database Opening Stats
   // ==========================================================
   function updateMasterStats(presetKey) {
     const preset = TABIYA_PRESETS[presetKey] || TABIYA_PRESETS['yugoslav_12h4'];
@@ -393,10 +491,15 @@ document.addEventListener('DOMContentLoaded', () => {
             classifyMove(move.san);
             updateEvalBar();
 
-            const prompt = `I played the master candidate move "${cand.san}" (${cand.label}). Break down the calculation and what tactical ideas Black is pursuing.`;
             appendUserBubble(`Master Move: ${cand.san}`);
-            conversationHistory.push({ role: 'user', content: prompt });
-            streamResponseFromOllama();
+
+            if (autoPlayOpponent && chess.turn() === 'w') {
+              triggerWhiteAutoResponse(move.san);
+            } else {
+              const prompt = `I played the master candidate move "${cand.san}" (${cand.label}). Break down the calculation and what tactical ideas Black is pursuing.`;
+              conversationHistory.push({ role: 'user', content: prompt });
+              streamResponseFromOllama();
+            }
           }
         });
         masterCandidatesEl.appendChild(chip);
@@ -409,7 +512,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // ==========================================================
-  // 4. Board & Move Management
+  // 5. Board & Move Management
   // ==========================================================
   function loadPreset(presetKey, triggerCoachPrompt = false) {
     const preset = TABIYA_PRESETS[presetKey] || TABIYA_PRESETS['yugoslav_12h4'];
@@ -548,10 +651,13 @@ document.addEventListener('DOMContentLoaded', () => {
           updateEvalBar();
           classifyMove(playedSan);
 
-          // Dynamic instant feedback on student's move!
-          if (!isStreaming) {
+          appendUserBubble(`Played on board: ${playedSan}`);
+
+          // If auto-opponent is enabled and it's White's turn, trigger White auto response!
+          if (autoPlayOpponent && chess.turn() === 'w') {
+            triggerWhiteAutoResponse(playedSan);
+          } else if (!isStreaming) {
             const movePrompt = `I just played "${playedSan}" on the board (FEN: ${chess.fen()}). Analyze this move in the context of the Dragon. Is it strong, sharp, or does White have an immediate tactical counter-threat?`;
-            appendUserBubble(`Played on board: ${playedSan}`);
             conversationHistory.push({ role: 'user', content: movePrompt });
             streamResponseFromOllama();
           }
@@ -680,7 +786,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // ==========================================================
-  // 5. Apple iMessage Messaging System & Ollama Streaming
+  // 6. Apple iMessage Messaging System & Ollama Streaming
   // ==========================================================
   chatInput.addEventListener('input', () => {
     chatInput.style.height = 'auto';
