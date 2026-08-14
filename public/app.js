@@ -1,6 +1,6 @@
 /**
  * Grandmaster Chess Coach (Julian Vance) — Sicilian Dragon Analysis
- * Dominant Chess.com-Sized Board & Apple iMessage Sidebar
+ * Deep Board-Aware Dynamic Coaching Engine
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -57,7 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  // Mid-conversation history
+  // Conversation history
   const conversationHistory = [
     {
       role: 'assistant',
@@ -89,9 +89,38 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnResetSession = document.getElementById('btn-reset-session');
 
   // ==========================================================
-  // 1. Board & Move Management
+  // 1. Board Context Generator
   // ==========================================================
-  function loadPreset(presetKey) {
+  function getCurrentBoardContext() {
+    let sanStr = '';
+    for (let i = 0; i < moveHistory.length; i += 2) {
+      const num = Math.floor(i / 2) + 1;
+      sanStr += `${num}.${moveHistory[i].san} `;
+      if (moveHistory[i + 1]) {
+        sanStr += `${moveHistory[i + 1].san} `;
+      }
+    }
+
+    const lastMoveSan = currentMoveIndex >= 0 ? moveHistory[currentMoveIndex]?.san : 'None';
+    const activePreset = TABIYA_PRESETS[variationSelect.value]?.name || 'Sicilian Dragon';
+
+    return {
+      fen: chess.fen(),
+      preset: activePreset,
+      san_history: sanStr.trim(),
+      last_move: lastMoveSan,
+      turn: chess.turn() === 'w' ? 'White' : 'Black',
+      is_check: chess.in_check(),
+      is_game_over: chess.game_over(),
+      is_checkmate: chess.in_checkmate(),
+      legal_moves: chess.moves()
+    };
+  }
+
+  // ==========================================================
+  // 2. Board & Move Management
+  // ==========================================================
+  function loadPreset(presetKey, triggerCoachPrompt = false) {
     const preset = TABIYA_PRESETS[presetKey] || TABIYA_PRESETS['yugoslav_12h4'];
     chess.reset();
     moveHistory = [];
@@ -111,6 +140,13 @@ document.addEventListener('DOMContentLoaded', () => {
     currentMoveIndex = moveHistory.length - 1;
     renderBoard();
     renderMovesList();
+
+    if (triggerCoachPrompt && !isStreaming) {
+      const userPrompt = `I just switched to the position: "${preset.name}". Give me your high-level tactical assessment of this setup and what Black should prioritize.`;
+      appendUserBubble(`Switched to tabiya: ${preset.name}`);
+      conversationHistory.push({ role: 'user', content: userPrompt });
+      streamResponseFromOllama();
+    }
   }
 
   function updateCoordinates() {
@@ -201,6 +237,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         if (move) {
+          const playedSan = move.san;
           moveHistory.push({
             san: move.san,
             fen: chess.fen(),
@@ -212,6 +249,15 @@ document.addEventListener('DOMContentLoaded', () => {
           legalMovesForSelected = [];
           renderBoard();
           renderMovesList();
+
+          // Dynamic instant feedback on student's move!
+          if (!isStreaming) {
+            const movePrompt = `I just played "${playedSan}" on the board (FEN: ${chess.fen()}). Analyze this move in the context of the Dragon. Is it strong, sharp, or does White have an immediate tactical counter-threat?`;
+            appendUserBubble(`Played on board: ${playedSan}`);
+            conversationHistory.push({ role: 'user', content: movePrompt });
+            streamResponseFromOllama();
+          }
+
         } else {
           const piece = chess.get(sqName);
           if (piece && piece.color === chess.turn()) {
@@ -303,11 +349,11 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   btnResetBoard.addEventListener('click', () => {
-    loadPreset(variationSelect.value);
+    loadPreset(variationSelect.value, false);
   });
 
   variationSelect.addEventListener('change', (e) => {
-    loadPreset(e.target.value);
+    loadPreset(e.target.value, true);
   });
 
   fenBadge.addEventListener('click', () => {
@@ -318,19 +364,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Ask Coach Consultation Button
   btnConsultCoach.addEventListener('click', () => {
-    const currentFen = chess.fen();
-    const lastMoveSan = currentMoveIndex >= 0 ? moveHistory[currentMoveIndex].san : 'Starting setup';
-    const activePreset = TABIYA_PRESETS[variationSelect.value]?.name || 'Sicilian Dragon';
-    const turnColor = chess.turn() === 'w' ? 'White' : 'Black';
-
-    const question = `Coach Vance, check out this board position (${activePreset}):\nMove: ${lastMoveSan} | Turn: ${turnColor} to play\nFEN: ${currentFen}\n\nWhat is the concrete tactical evaluation here and what move should I look at next?`;
+    const boardCtx = getCurrentBoardContext();
+    const question = `Coach Vance, evaluate this position on the board (${boardCtx.preset}):\nMove: ${boardCtx.last_move} | Turn: ${boardCtx.turn} to play\nFEN: ${boardCtx.fen}\n\nWhat are the top tactical candidate moves for ${boardCtx.turn} and what plans should I formulate?`;
     
     chatInput.value = question;
     handleSendMessage();
   });
 
   // ==========================================================
-  // 2. Apple iMessage Messaging System & Ollama Streaming
+  // 3. Apple iMessage Messaging System & Ollama Streaming
   // ==========================================================
   chatInput.addEventListener('input', () => {
     chatInput.style.height = 'auto';
@@ -433,12 +475,15 @@ document.addEventListener('DOMContentLoaded', () => {
     btnSend.disabled = true;
     createTypingBubble();
 
+    const boardContext = getCurrentBoardContext();
+
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages: conversationHistory
+          messages: conversationHistory,
+          board_context: boardContext
         })
       });
 
@@ -517,5 +562,5 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Initial load
-  loadPreset('yugoslav_12h4');
+  loadPreset('yugoslav_12h4', false);
 });

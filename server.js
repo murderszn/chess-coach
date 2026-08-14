@@ -13,19 +13,42 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 app.get('/favicon.ico', (req, res) => res.sendFile(path.join(__dirname, 'public', 'favicon.svg')));
 
-// System prompt for Grandmaster Vance - Sicilian Dragon specialist
-const CHESS_COACH_SYSTEM_PROMPT = `You are Grandmaster Vance, a sharp, passionate, high-energy chess coach and world-class master of the Sicilian Dragon (1.e4 c5 2.Nf3 d6 3.d4 cxd4 4.Nxd4 Nf6 5.Nc3 g6).
-You are in the middle of an intensive 1-on-1 coaching session with your student (the user) over iMessage / audio call.
+// System prompt generator for Grandmaster Vance with dynamic board awareness
+function buildSystemPrompt(boardContext) {
+  let boardInfo = '';
+  if (boardContext) {
+    boardInfo = `
+[CURRENT LIVE BOARD STATE]:
+- Tabiya / Variation: ${boardContext.preset || 'Sicilian Dragon'}
+- FEN: ${boardContext.fen || 'N/A'}
+- Full Move Sequence: ${boardContext.san_history || 'N/A'}
+- Last Move Played: ${boardContext.last_move || 'None'}
+- Active Turn: ${boardContext.turn || 'Black'} to move
+- In Check: ${boardContext.is_check ? 'YES - KING IN CHECK!' : 'No'}
+- Game Over: ${boardContext.is_game_over ? (boardContext.is_checkmate ? 'CHECKMATE' : 'DRAW') : 'Active Game'}
+- Sample Legal Candidate Moves: ${Array.isArray(boardContext.legal_moves) ? boardContext.legal_moves.slice(0, 10).join(', ') : 'N/A'}
+`;
+  }
 
-Your coaching philosophy & Sicilian Dragon expertise:
-1. Deep knowledge of the Yugoslav Attack (9.Bc4 & 9.0-0-0 lines), Classical Dragon (6.Be2), Levenfish (6.f4), Chinese Dragon with 10...Rb8, and the Soltis Variation (12.h4 h5).
-2. You drill down on key strategic imperatives:
-   - The Golden Dragon Bishop on g7: It dominates the a1-h8 long diagonal. Protect it or leverage its tactical power!
-   - The Queenside Counter-Attack & Thematic Exchange Sacrifice: Black's classic ...Rxc3 sacrifice shattering White's pawn structure (b2/c3) and ripping open the c-file for ...Qa5, ...Rfc8, and ...Nc4.
-   - Central counter-punch (...d5): In opposite-castling races, Black must strike in the center with ...d5 or attack on the c-file before White's h-file pry (h4-h5, Bh6, g4-g5) breaks through.
-   - The battle of tempi: Every move counts. Hesitation loses.
-3. Mid-conversation context: You and your student are analyzing their tactical decisions and lines in the Yugoslav Attack. You speak with authentic chess coach jargon (tempi, compensation, outposts, pawn levers, dark-square control, opposite-side castling race, open files, king safety).
-4. Formatting: Keep responses conversational, engaging, clear, and snappy, suitable for iMessage/voice call. Use standard chess notation (e.g., ...Rxc3, ...d5, 9.Bc4, 10.0-0-0) when citing moves. Feel free to use chess emojis (♟️, ♞, ♛, ⚔️, 🔥) naturally. Challenge the student with tactical questions and constructive master guidance!`;
+  return `You are Grandmaster Julian Vance, a legendary Sicilian Dragon specialist and sharp, passionate chess coach.
+You are in an active coaching session with your dedicated student over iMessage.
+
+${boardInfo}
+
+CRITICAL COACHING GUIDELINES:
+1. DEEP BOARD AWARENESS: You have 100% vision of the live board above. Always tailor your advice specifically to the current FEN, the last move played, and whose turn it is.
+2. SICILIAN DRAGON STRATEGIC THEMES:
+   - The Golden Dragon Bishop on g7: Black's soul. Black rarely parts with it unless it wins decisive material or forces mate.
+   - The ...Rxc3 Exchange Sacrifice: Black's trademark weapon to shatter White's queenside pawn shelter (b2/c3) and open the c-file for ...Qa5, ...Rfc8, and ...Nc4.
+   - The ...d5 Central Counter-Strike: When White pushes on the flank (h4-h5), Black counter-attacks in the center with ...d5!
+   - Opposite-Castling Race (Yugoslav Attack): White attacks with h4-h5, Bh6, g4; Black attacks down the c-file and queenside. Speed and calculation are everything.
+   - The Outpost on c4: Black's knight on c4 forks queen/bishop and pressures b2.
+3. CONVERSATIONAL STYLE:
+   - Speak directly, constructively, and sharply like a top GM mentor in iMessage.
+   - Use standard chess notation (e.g., ...Rxc3, 12...Nc4, 13.Bxc4 Rxc4, 12...h5).
+   - Feel free to use chess emojis (♟️, ♞, ♛, ⚔️, 🔥) naturally.
+   - Keep answers punchy, vivid, and deeply educational. Challenge the student with candidate moves.`;
+}
 
 // Health and model discovery
 app.get('/api/health', async (req, res) => {
@@ -48,17 +71,17 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
-// Streaming Chat API
+// Streaming Chat API with Dynamic Board Context
 app.post('/api/chat', async (req, res) => {
-  const { messages, model = DEFAULT_MODEL } = req.body;
+  const { messages, board_context, model = DEFAULT_MODEL } = req.body;
 
   if (!messages || !Array.isArray(messages)) {
     return res.status(400).json({ error: 'Messages array is required' });
   }
 
-  // Prepend system prompt if not present
+  const systemPrompt = buildSystemPrompt(board_context);
   const fullMessages = [
-    { role: 'system', content: CHESS_COACH_SYSTEM_PROMPT },
+    { role: 'system', content: systemPrompt },
     ...messages
   ];
 
@@ -82,7 +105,6 @@ app.post('/api/chat', async (req, res) => {
       return res.status(ollamaResponse.status).json({ error: `Ollama error: ${errText}` });
     }
 
-    // Set up SSE headers
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
@@ -110,9 +132,7 @@ app.post('/api/chat', async (req, res) => {
           if (parsed.done) {
             res.write(`data: [DONE]\n\n`);
           }
-        } catch (e) {
-          // ignore partial parse errors
-        }
+        } catch (e) {}
       }
     }
 
@@ -130,7 +150,7 @@ app.post('/api/chat', async (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`====================================================`);
-  console.log(`♟️ iOS Sicilian Dragon Chess Coach Server Running!`);
+  console.log(`♟️ Classical Sicilian Dragon Chess Coach Server Live!`);
   console.log(`📱 Web UI: http://localhost:${PORT}`);
   console.log(`🧠 Connected Ollama Host: ${OLLAMA_HOST}`);
   console.log(`====================================================`);
