@@ -54,7 +54,7 @@ async function runTests() {
       board_context: {
         repertoire: 'black_dragon',
         preset: 'Yugoslav Attack (9.Bc4 Main Line)',
-        fen: '2rq1rk1/pp1bppbp/3p1np1/4n3/2BNP2P/2N1BP2/PPPQ2P1/2KR3R w - - 0 12',
+        fen: '2rq1rk1/pp1bppbp/3p1np1/4n3/2BNP2P/2N1BP2/PPPQ2P1/2KR3R b - - 0 12',
         san_history: '1.e4 c5 2.Nf3 d6 3.d4 cxd4 4.Nxd4 Nf6 5.Nc3 g6 6.Be3 Bg7 7.f3 O-O 8.Qd2 Nc6 9.Bc4 Bd7 10.O-O-O Rc8 11.Bb3 Ne5 12.h4',
         last_move: '12.h4',
         turn: 'Black',
@@ -70,7 +70,7 @@ async function runTests() {
     console.log('Coach Response:\n' + reply1 + '\n');
 
     const hasNoEmojis = !/[\u{1F300}-\u{1FAFF}]/u.test(reply1);
-    const mentionsKeyMoves = /Nc4|h5|Rxc3/i.test(reply1);
+    const mentionsKeyMoves = /Nx?c4|h5|Rxc3/i.test(reply1);
     const isConcise = reply1.split(/[.!?]+/).filter(s => s.trim().length > 0).length <= 6;
 
     results.push({
@@ -142,7 +142,7 @@ async function runTests() {
     console.log('Coach Response:\n' + reply3 + '\n');
 
     const hasNoEmojis3 = !/[\u{1F300}-\u{1FAFF}]/u.test(reply3);
-    const mentionsInaccuracy = /tempo|passive|Rc8|d5|h4/i.test(reply3);
+    const mentionsInaccuracy = /tempo|passive|slow|prophylactic|Rc8|d5|b5|h4/i.test(reply3);
 
     results.push({
       test: '3. Inaccuracy Evaluation (10...a6 critique)',

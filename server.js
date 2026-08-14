@@ -26,11 +26,12 @@ function buildSystemPrompt(boardContext, engineAnalysis = null) {
   let engineSection = '';
   if (engineAnalysis && engineAnalysis.best_move_san) {
     engineSection = `
-[STOCKFISH 18 NNUE ENGINE TRUTH - DEPTH ${engineAnalysis.depth || 14}]:
-- Verified Engine Best Move: ${engineAnalysis.best_move_san} (Evaluation: ${engineAnalysis.eval_score})
-- Engine PV Line: ${engineAnalysis.pv || 'N/A'}
-- CRITICAL ENGINE MANDATE: You MUST recommend ${engineAnalysis.best_move_san} as the primary candidate move. 
-- TACTICAL SANITY: NEVER recommend moves that hang pieces or walk into direct capture (e.g. never suggest ...Qa5 if White's Queen or Bishop can capture it for free). Explain the concrete tactical reasoning for ${engineAnalysis.best_move_san}.
+[STOCKFISH 18 NNUE ENGINE VERIFIED BEST MOVE]:
+- Recommended Move: ${engineAnalysis.best_move_san} (${engineAnalysis.move_description})
+- Evaluation: ${engineAnalysis.eval_score}
+- Continuation: ${engineAnalysis.pv || 'N/A'}
+- MANDATORY INSTRUCTION: You MUST recommend ${engineAnalysis.best_move_san}. Explicitly name the move as "${engineAnalysis.best_move_san}" and explain its tactical goal (${engineAnalysis.move_description}). NEVER substitute or invent a different move name.
+- TACTICAL SANITY: NEVER suggest any move that hangs a piece or allows immediate capture.
 `;
   }
 
@@ -123,6 +124,18 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
+function describeMoveInPlainEnglish(moveObj, side) {
+  if (!moveObj) return '';
+  const pieceNames = { p: 'Pawn', n: 'Knight', b: 'Bishop', r: 'Rook', q: 'Queen', k: 'King' };
+  const pName = pieceNames[moveObj.piece] || 'Piece';
+  let desc = `${side}'s ${pName} on ${moveObj.from} moves to ${moveObj.to} (${moveObj.san})`;
+  if (moveObj.captured) {
+    const capName = pieceNames[moveObj.captured] || 'piece';
+    desc += `, capturing the enemy ${capName} on ${moveObj.to}`;
+  }
+  return desc;
+}
+
 // Streaming Chat API with Dynamic Board Context & Live Stockfish Ground Truth
 app.post('/api/chat', async (req, res) => {
   const { messages, board_context, model = DEFAULT_MODEL } = req.body;
@@ -137,6 +150,7 @@ app.post('/api/chat', async (req, res) => {
       const sfResult = await queryStockfish(board_context.fen, 14, 20);
       if (sfResult.bestMoveUci && sfResult.bestMoveUci !== '(none)') {
         const chessInstance = new Chess(board_context.fen);
+        const sideToMove = chessInstance.turn() === 'w' ? 'White' : 'Black';
         const from = sfResult.bestMoveUci.slice(0, 2);
         const to = sfResult.bestMoveUci.slice(2, 4);
         const promotion = sfResult.bestMoveUci.length > 4 ? sfResult.bestMoveUci[4] : undefined;
@@ -145,6 +159,7 @@ app.post('/api/chat', async (req, res) => {
           engineAnalysis = {
             best_move_san: moveObj.san,
             best_move_uci: sfResult.bestMoveUci,
+            move_description: describeMoveInPlainEnglish(moveObj, sideToMove),
             eval_score: (sfResult.scoreCp / 100).toFixed(2),
             pv: sfResult.pvLine,
             depth: sfResult.depth
