@@ -445,3 +445,17 @@ The suite posts three coaching prompts (Dragon 12.h4 plan, Fried Liver `6.Nxf7`,
 | Empty / wrong model | `ollama pull gemma4`; `GET /api/health` lists models |
 | Opponent never moves | Turn **AUTO** on; you must be on the repertoire’s color to move |
 | Eval bar looks “Stockfish-like” but shallow | Expected — it is the local heuristic engine, not Stockfish |
+
+## Contributing
+
+Contributions are what make the open source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
+
+Please read the [Contributing Guidelines](CONTRIBUTING.md) for details on our code of conduct, and the process for submitting pull requests to us.
+
+## Code of Conduct
+
+We are committed to fostering a welcoming and inspiring community for all. Please read our [Code of Conduct](CODE_OF_CONDUCT.md) to understand the expectations for behavior in this project.
+
+## License
+
+Distributed under the MIT License. See [LICENSE](LICENSE) for more information.
