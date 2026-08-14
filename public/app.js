@@ -455,11 +455,59 @@ document.addEventListener('DOMContentLoaded', () => {
   const evalFillWhite = document.getElementById('eval-fill-white');
   const evalFillBlack = document.getElementById('eval-fill-black');
 
-  // Modal Elements
+  // Eval & Accuracy Ribbon Elements
+  const evalRibbonStage = document.getElementById('eval-ribbon-stage');
+  const ribbonWhiteAccTag = document.getElementById('ribbon-white-acc-tag');
+  const ribbonBlackAccTag = document.getElementById('ribbon-black-acc-tag');
+  const ribbonLiveScore = document.getElementById('ribbon-live-score');
+  const evalRibbonSvg = document.getElementById('eval-ribbon-svg');
+  const evalRibbonCursor = document.getElementById('eval-ribbon-cursor');
+  const evalRibbonTooltip = document.getElementById('eval-ribbon-tooltip');
+  const evalRibbonTrackWrapper = document.getElementById('eval-ribbon-track-wrapper');
+
+  // Game Review Modal Elements
+  const btnOpenGameReview = document.getElementById('btn-open-game-review');
+  const btnBottomGameReview = document.getElementById('btn-bottom-game-review');
+  const gameReviewModal = document.getElementById('game-review-modal');
+  const btnCloseGameReview = document.getElementById('btn-close-game-review');
+  const reviewGameSubtitle = document.getElementById('review-game-subtitle');
+  const reviewWhiteAcc = document.getElementById('review-white-acc');
+  const reviewBlackAcc = document.getElementById('review-black-acc');
+  const accGaugeWhite = document.getElementById('acc-gauge-white');
+  const accGaugeBlack = document.getElementById('acc-gauge-black');
+  const reviewWhiteName = document.getElementById('review-white-name');
+  const reviewBlackName = document.getElementById('review-black-name');
+  const reviewWhiteTier = document.getElementById('review-white-tier');
+  const reviewBlackTier = document.getElementById('review-black-tier');
+  const reviewColWhName = document.getElementById('review-col-wh-name');
+  const reviewColBlName = document.getElementById('review-col-bl-name');
+  const reviewBreakdownRows = document.getElementById('review-breakdown-rows');
+  const reviewEvalSvg = document.getElementById('review-eval-svg');
+  const evalGraphTooltip = document.getElementById('eval-graph-tooltip');
+  const tpBadge = document.getElementById('tp-badge');
+  const tpMoveIndicator = document.getElementById('tp-move-indicator');
+  const tpDescription = document.getElementById('tp-description');
+  const btnCoachDeepReview = document.getElementById('btn-coach-deep-review');
+  const btnPracticeTurningPoint = document.getElementById('btn-practice-turning-point');
+  const btnCopyReviewPgn = document.getElementById('btn-copy-review-pgn');
+
+  // PGN Import Modal Elements
+  const btnOpenPgnModal = document.getElementById('btn-open-pgn-modal');
+  const pgnImportModal = document.getElementById('pgn-import-modal');
+  const btnClosePgnModal = document.getElementById('btn-close-pgn-modal');
+  const pgnInputTextarea = document.getElementById('pgn-input-textarea');
+  const btnClearPgn = document.getElementById('btn-clear-pgn');
+  const chkAutoReview = document.getElementById('chk-auto-review');
+  const chkAutoFlip = document.getElementById('chk-auto-flip');
+  const btnSubmitPgnLoad = document.getElementById('btn-submit-pgn-load');
+  const btnCancelPgnLoad = document.getElementById('btn-cancel-pgn-load');
+
+  // Game Over Modal Elements
   const gameOverModal = document.getElementById('game-over-modal');
   const gameOverTitle = document.getElementById('game-over-title');
   const gameOverSubtitle = document.getElementById('game-over-subtitle');
   const gameOverStats = document.getElementById('game-over-stats');
+  const btnModalReview = document.getElementById('btn-modal-review');
   const btnModalRematch = document.getElementById('btn-modal-rematch');
   const btnModalClose = document.getElementById('btn-modal-close');
 
@@ -471,6 +519,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Custom Highlight/Hint Arrow state
   let customHintArrow = null;
+  let activeGameReviewData = null;
+  let customGameMetadata = null;
 
   // ==========================================================
   // 1. Repertoire & Mode Management

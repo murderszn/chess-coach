@@ -66,6 +66,14 @@
 
           <!-- Clean Action Tools Island -->
           <div class="action-icon-group">
+            <button class="tool-icon-btn highlight-gold" id="btn-open-game-review" title="Open Post-Game Review & Accuracy Rating Report">
+              <span class="btn-emoji">📊</span>
+              <span class="btn-subtext">REVIEW</span>
+            </button>
+            <button class="tool-icon-btn highlight-blue" id="btn-open-pgn-modal" title="Import PGN / Analyze Past Chess.com & Lichess Games">
+              <span class="btn-emoji">📥</span>
+              <span class="btn-subtext">PGN</span>
+            </button>
             <button class="tool-icon-btn active" id="btn-toggle-auto-play" title="Auto-Opponent Sparring: ON/OFF">
               <span class="btn-emoji">⚔️</span>
               <span class="btn-subtext" id="auto-play-state-text">AUTO</span>
@@ -77,6 +85,10 @@
             <button class="tool-icon-btn" id="btn-toggle-master-stats" title="Lichess Master Opening Database">
               <span class="btn-emoji">🏛️</span>
               <span class="btn-subtext">STATS</span>
+            </button>
+            <button class="tool-icon-btn active" id="btn-toggle-voice" title="Grandmaster Voice Coach: ON/OFF">
+              <span class="btn-emoji" id="voice-icon-emoji">🎙️</span>
+              <span class="btn-subtext" id="voice-state-text">VOICE</span>
             </button>
             <button class="tool-icon-btn active" id="btn-toggle-sound" title="Sound Effects: ON/OFF">
               <span class="btn-emoji" id="sound-icon-emoji">🔊</span>
@@ -228,6 +240,28 @@
         </div>
       </div>
 
+      <!-- Interactive Accuracy & Eval Graph Ribbon (Chess.com / Lichess Style) -->
+      <div class="eval-ribbon-stage" id="eval-ribbon-stage">
+        <div class="eval-ribbon-header">
+          <div class="eval-ribbon-title">
+            <span class="ribbon-icon">📈</span>
+            <span class="ribbon-label">EVAL & ACCURACY RIBBON</span>
+          </div>
+          <div class="eval-ribbon-stats" id="eval-ribbon-stats">
+            <span class="ribbon-tag" id="ribbon-white-acc-tag">♔ White: 92%</span>
+            <span class="ribbon-tag" id="ribbon-black-acc-tag">♚ Black: 89%</span>
+            <span class="ribbon-live-score" id="ribbon-live-score">Eval: 0.0</span>
+          </div>
+        </div>
+        <div class="eval-ribbon-track-wrapper" id="eval-ribbon-track-wrapper">
+          <svg class="eval-ribbon-svg" id="eval-ribbon-svg" viewBox="0 0 1000 48" preserveAspectRatio="none">
+            <!-- Dynamic SVG path, zero line, and move nodes rendered by app.js -->
+          </svg>
+          <div class="eval-ribbon-cursor" id="eval-ribbon-cursor" style="left: 0%; display: none;"></div>
+          <div class="eval-ribbon-tooltip" id="eval-ribbon-tooltip" style="display: none;"></div>
+        </div>
+      </div>
+
       <!-- Bottom Move Navigation & History Controls -->
       <div class="board-bottom-bar">
         <div class="nav-btn-group">
@@ -245,6 +279,11 @@
         <!-- Explain Any Move Feature Chip -->
         <button class="btn-explain-move" id="btn-explain-move" title="Ask Coach Vance to explain this exact move's strategic rationale">
           <span>💡 Explain Move</span>
+        </button>
+
+        <!-- Dedicated Game Review Button in Bottom Bar -->
+        <button class="btn-review-bar" id="btn-bottom-game-review" title="Launch full Game Review & Accuracy Report">
+          <span>📊 Game Review</span>
         </button>
 
         <!-- Direct Ask Coach Button -->
@@ -276,9 +315,15 @@
           </div>
         </div>
 
-        <button class="btn-clear-chat" id="btn-reset-session" title="Reset Session to Tabiya">
-          🔄
-        </button>
+        <div class="imessage-header-actions">
+          <button class="btn-header-voice active" id="btn-chat-voice-toggle" title="Grandmaster Voice Coach: ON/OFF">
+            <span class="voice-wave-icon">🎙️</span>
+            <span class="voice-header-label">Voice Coach</span>
+          </button>
+          <button class="btn-clear-chat" id="btn-reset-session" title="Reset Session to Tabiya">
+            🔄
+          </button>
+        </div>
       </header>
 
       <!-- Message History Stream -->
@@ -326,6 +371,178 @@
 
   </div>
 
+  <!-- ==========================================================
+       Grandmaster Game Review & Accuracy Rating Report Modal
+       ========================================================== -->
+  <div class="game-over-modal-backdrop" id="game-review-modal" style="display:none;">
+    <div class="game-review-card">
+      <div class="review-modal-header">
+        <div class="review-title-cluster">
+          <div class="review-laurel">🏛️ 📊 🏛️</div>
+          <div>
+            <h2 class="modal-title">GAME REVIEW & ACCURACY REPORT</h2>
+            <p class="modal-subtitle" id="review-game-subtitle">Match Analysis &bull; Sicilian Dragon Yugoslav Attack</p>
+          </div>
+        </div>
+        <button class="review-modal-close-btn" id="btn-close-game-review" title="Close Game Review">✕</button>
+      </div>
+
+      <!-- Hero Accuracy Scorecards (Chess.com Style Dual Ring Gauges) -->
+      <div class="accuracy-hero-grid">
+        <div class="accuracy-hero-card white-player" id="acc-card-white">
+          <div class="acc-gauge-wrapper">
+            <svg class="acc-gauge-svg" viewBox="0 0 100 100">
+              <circle class="acc-gauge-bg" cx="50" cy="50" r="40" />
+              <circle class="acc-gauge-val" id="acc-gauge-white" cx="50" cy="50" r="40" stroke-dasharray="251.2" stroke-dashoffset="25" />
+            </svg>
+            <div class="acc-score-display">
+              <span class="acc-number" id="review-white-acc">92.4%</span>
+              <span class="acc-label">ACCURACY</span>
+            </div>
+          </div>
+          <div class="acc-player-meta">
+            <div class="acc-player-name" id="review-white-name">GM Vance (White)</div>
+            <div class="acc-player-tier" id="review-white-tier">👑 Grandmaster Level</div>
+          </div>
+        </div>
+
+        <div class="accuracy-hero-card black-player" id="acc-card-black">
+          <div class="acc-gauge-wrapper">
+            <svg class="acc-gauge-svg" viewBox="0 0 100 100">
+              <circle class="acc-gauge-bg" cx="50" cy="50" r="40" />
+              <circle class="acc-gauge-val" id="acc-gauge-black" cx="50" cy="50" r="40" stroke-dasharray="251.2" stroke-dashoffset="35" />
+            </svg>
+            <div class="acc-score-display">
+              <span class="acc-number" id="review-black-acc">88.5%</span>
+              <span class="acc-label">ACCURACY</span>
+            </div>
+          </div>
+          <div class="acc-player-meta">
+            <div class="acc-player-name" id="review-black-name">Student (Black)</div>
+            <div class="acc-player-tier" id="review-black-tier">⭐ Master Candidate</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Move Quality Classification Distribution Table -->
+      <div class="move-breakdown-panel">
+        <div class="breakdown-header">
+          <span class="col-wh" id="review-col-wh-name">White</span>
+          <span class="col-center">Move Classification</span>
+          <span class="col-bl" id="review-col-bl-name">Black</span>
+        </div>
+        <div class="breakdown-rows" id="review-breakdown-rows">
+          <!-- Dynamically populated rows for Brilliant, Great, Best, Book, Inaccuracies, Mistakes, Blunders, Misses -->
+        </div>
+      </div>
+
+      <!-- Interactive Eval & Advantage SVG Graph Ribbon with Clickable Nodes -->
+      <div class="review-graph-container">
+        <div class="graph-header-meta">
+          <span class="graph-title">📈 EVALUATION & MOMENTUM TRAJECTORY</span>
+          <span class="graph-hint">💡 Click or hover any move node to jump board position</span>
+        </div>
+        <div class="review-graph-scroll-wrap" id="review-graph-wrapper">
+          <svg class="review-eval-svg" id="review-eval-svg" viewBox="0 0 760 140" preserveAspectRatio="none">
+            <!-- Rendered dynamically by app.js -->
+          </svg>
+          <div class="eval-graph-tooltip" id="eval-graph-tooltip" style="display:none;"></div>
+        </div>
+      </div>
+
+      <!-- Coach Vance Turning Point & Master Insights Card -->
+      <div class="turning-point-card" id="turning-point-card">
+        <div class="tp-badge-row">
+          <span class="tp-badge" id="tp-badge">🎯 CRITICAL TURNING POINT</span>
+          <span class="tp-move-indicator" id="tp-move-indicator">Move 14...Rxc3! (Advantage +3.8 swing)</span>
+        </div>
+        <div class="tp-description" id="tp-description">
+          Coach Vance's critical game evaluation and opening theory departure will appear here.
+        </div>
+      </div>
+
+      <!-- Modal Bottom Actions -->
+      <div class="review-modal-actions">
+        <button class="modal-btn primary" id="btn-coach-deep-review">
+          🧠 Coach Vance Full Game Review (iMessage)
+        </button>
+        <button class="modal-btn secondary" id="btn-practice-turning-point">
+          🎯 Practice Turning Point
+        </button>
+        <button class="modal-btn secondary" id="btn-copy-review-pgn">
+          📋 Export Annotated PGN
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================================
+       PGN Import & Custom Game Analyzer Modal
+       ========================================================== -->
+  <div class="game-over-modal-backdrop" id="pgn-import-modal" style="display:none;">
+    <div class="pgn-import-card">
+      <div class="review-modal-header">
+        <div class="review-title-cluster">
+          <div class="review-laurel">🏛️ 📥 🏛️</div>
+          <div>
+            <h2 class="modal-title">IMPORT PGN & CUSTOM GAME</h2>
+            <p class="modal-subtitle">Load games from Chess.com, Lichess, or tournaments for instant Grandmaster Analysis</p>
+          </div>
+        </div>
+        <button class="review-modal-close-btn" id="btn-close-pgn-modal" title="Close PGN Import">✕</button>
+      </div>
+
+      <!-- Sample Master Classics -->
+      <div class="pgn-sample-section">
+        <span class="pgn-sample-label">⚡ QUICK LOAD CLASSIC MASTER SHOWDOWNS:</span>
+        <div class="pgn-sample-chips">
+          <button class="sample-pgn-chip" data-sample="kasparov_anand_1995" title="Kasparov vs Anand 1995 - Sicilian Dragon 12.h4!">
+            🐉 Kasparov vs Anand '95 (Yugoslav 12.h4)
+          </button>
+          <button class="sample-pgn-chip" data-sample="fischer_larsen_1958" title="Fischer vs Larsen 1958 - Yugoslav ...Rxc3 Sac">
+            💥 Fischer vs Larsen '58 (...Rxc3!)
+          </button>
+          <button class="sample-pgn-chip" data-sample="morphy_opera_1858" title="Paul Morphy vs Duke & Count 1858 - Immortal 1.e4 attack">
+            ⚡ Morphy Opera '58 (Aggressive 1.e4)
+          </button>
+          <button class="sample-pgn-chip" data-sample="kasparov_topalov_1999" title="Kasparov vs Topalov 1999 - Immortal Rook Sac">
+            👑 Kasparov's Immortal ('99)
+          </button>
+        </div>
+      </div>
+
+      <!-- PGN Input Area -->
+      <div class="pgn-input-wrapper">
+        <div class="pgn-input-top-bar">
+          <span class="pgn-textarea-label">PASTE PGN OR NOTATION:</span>
+          <button class="btn-clear-pgn" id="btn-clear-pgn">Clear Text</button>
+        </div>
+        <textarea id="pgn-input-textarea" class="pgn-textarea" rows="7" placeholder="Paste your PGN text here (e.g. from Chess.com, Lichess, or copy-paste moves: 1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 g6 ...)"></textarea>
+      </div>
+
+      <!-- Import Settings & Actions -->
+      <div class="pgn-import-options">
+        <label class="pgn-checkbox-label">
+          <input type="checkbox" id="chk-auto-review" checked>
+          <span>Run 📊 Game Review & Accuracy immediately after import</span>
+        </label>
+        <label class="pgn-checkbox-label">
+          <input type="checkbox" id="chk-auto-flip" checked>
+          <span>Auto-orient board to student's color</span>
+        </label>
+      </div>
+
+      <div class="modal-actions">
+        <button class="modal-btn primary" id="btn-submit-pgn-load">
+          🚀 Analyze & Load Game
+        </button>
+        <button class="modal-btn secondary" id="btn-cancel-pgn-load">
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Game Over & Victory / Draw Modal -->
   <div class="game-over-modal-backdrop" id="game-over-modal">
     <div class="game-over-card">
@@ -336,8 +553,9 @@
         Game concluded in 34 moves. Total pieces captured: 14.
       </div>
       <div class="modal-actions">
-        <button class="modal-btn primary" id="btn-modal-rematch">⚔️ Play Full Game (1.e4)</button>
-        <button class="modal-btn secondary" id="btn-modal-close">Close Analysis</button>
+        <button class="modal-btn primary" id="btn-modal-review">📊 View Game Review</button>
+        <button class="modal-btn secondary" id="btn-modal-rematch">⚔️ Rematch / Reset</button>
+        <button class="modal-btn secondary" id="btn-modal-close">Close</button>
       </div>
     </div>
   </div>
@@ -345,3 +563,4 @@
   <script src="app.js"></script>
 </body>
 </html>
+

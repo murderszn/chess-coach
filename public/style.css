@@ -109,9 +109,8 @@ body.light-theme .coach-name {
 body.light-theme .coach-bubble {
   background: #ffffff;
   color: #1c1917;
-  border: 1px solid rgba(179, 140, 32, 0.3);
-  border-left: 3px solid #b38c20;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 }
 
 body.light-theme .user-bubble {
@@ -1569,12 +1568,11 @@ body.light-theme .btn-explain-move {
 }
 
 .coach-bubble {
-  background: var(--basalt-glass-card);
-  color: var(--text-primary);
-  border: 1px solid rgba(212, 175, 55, 0.2);
-  border-left: 3px solid var(--roman-gold);
+  background: rgba(26, 32, 44, 0.85);
+  color: var(--carrara-white);
+  border: 1px solid rgba(255, 255, 255, 0.09);
   border-top-left-radius: 5px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
 }
 
 .coach-group .msg-bubble:first-child {
@@ -1600,11 +1598,11 @@ body.light-theme .btn-explain-move {
 }
 
 .line-callout {
-  background: rgba(0, 0, 0, 0.45);
-  border-left: 3px solid var(--roman-gold);
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   padding: 7px 11px;
   margin: 7px 0;
-  border-radius: 6px;
+  border-radius: 8px;
   font-family: var(--font-mono);
   font-size: 12px;
   color: var(--roman-gold-light);
@@ -1888,61 +1886,45 @@ body.light-theme .btn-explain-move {
 .clickable-move-pill {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
-  background: rgba(212, 175, 55, 0.18);
-  border: 1px solid rgba(212, 175, 55, 0.45);
-  color: var(--roman-gold-light);
-  padding: 1px 7px;
-  margin: 1px 2px;
-  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #93c5fd;
+  padding: 2px 8px;
+  margin: 1px 3px;
+  border-radius: 6px;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 700;
   cursor: pointer;
   user-select: none;
   text-decoration: none;
   vertical-align: baseline;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
   transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.clickable-move-pill::after {
-  content: "♟";
-  font-size: 9px;
-  opacity: 0.75;
-  transition: transform 0.15s ease;
-}
-
 .clickable-move-pill:hover {
-  background: linear-gradient(135deg, #d4af37 0%, #f5e6b3 100%);
-  color: #12100a;
-  border-color: #f5e6b3;
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #60a5fa;
   transform: translateY(-1px);
-  box-shadow: 0 3px 12px rgba(212, 175, 55, 0.55);
-}
-
-.clickable-move-pill:hover::after {
-  transform: scale(1.2);
-  opacity: 1;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.4);
 }
 
 .clickable-move-pill:active {
-  transform: translateY(0) scale(0.96);
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  transform: translateY(0) scale(0.97);
 }
 
 body.light-theme .clickable-move-pill {
-  background: rgba(179, 140, 32, 0.12);
-  border: 1px solid rgba(179, 140, 32, 0.4);
-  color: #785309;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  background: rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  color: #0369a1;
 }
 
 body.light-theme .clickable-move-pill:hover {
-  background: linear-gradient(135deg, #b38c20 0%, #d4af37 100%);
+  background: #0284c7;
   color: #ffffff;
-  border-color: #b38c20;
-  box-shadow: 0 3px 10px rgba(179, 140, 32, 0.4);
+  border-color: #0284c7;
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.3);
 }
 
 /* Piece Move Sliding Animation */
@@ -1983,4 +1965,877 @@ body.light-theme .coach-toast {
   color: #1c1917;
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
 }
+
+/* ==========================================================
+   Tool Action Button Highlights & Badges
+   ========================================================== */
+.tool-icon-btn.highlight-gold {
+  background: rgba(212, 175, 55, 0.16);
+  border-color: rgba(212, 175, 55, 0.6);
+  color: var(--roman-gold-light);
+}
+
+.tool-icon-btn.highlight-gold:hover {
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.4) 0%, rgba(245, 230, 179, 0.25) 100%);
+  border-color: var(--roman-gold);
+  box-shadow: 0 0 14px var(--roman-gold-glow);
+}
+
+.tool-icon-btn.highlight-blue {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: rgba(96, 165, 250, 0.5);
+  color: #93c5fd;
+}
+
+.tool-icon-btn.highlight-blue:hover {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.35) 0%, rgba(147, 197, 253, 0.25) 100%);
+  border-color: #60a5fa;
+  box-shadow: 0 0 14px rgba(59, 130, 246, 0.4);
+}
+
+/* Bottom Bar Game Review Button */
+.btn-review-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.22) 0%, rgba(140, 109, 59, 0.25) 100%);
+  border: 1px solid var(--roman-gold);
+  border-radius: 8px;
+  color: var(--roman-gold-light);
+  font-family: var(--font-roman);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  padding: 7px 14px;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: all 0.2s ease;
+}
+
+.btn-review-bar:hover {
+  background: linear-gradient(135deg, #d4af37 0%, #f5e6b3 100%);
+  color: #12100a;
+  box-shadow: 0 0 16px var(--roman-gold-glow);
+  transform: translateY(-1px);
+}
+
+/* ==========================================================
+   Interactive Accuracy & Eval Graph Ribbon
+   ========================================================== */
+.eval-ribbon-stage {
+  background: var(--basalt-glass-card);
+  border-top: 1px solid rgba(212, 175, 55, 0.2);
+  border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+  padding: 8px 16px 10px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: relative;
+  z-index: 10;
+}
+
+.eval-ribbon-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.eval-ribbon-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-roman);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: var(--roman-gold-light);
+}
+
+.eval-ribbon-stats {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ribbon-tag {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-secondary);
+}
+
+.ribbon-live-score {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--roman-gold-light);
+  background: rgba(212, 175, 55, 0.15);
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.eval-ribbon-track-wrapper {
+  position: relative;
+  height: 48px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: crosshair;
+}
+
+.eval-ribbon-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.eval-ribbon-cursor {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #ffffff;
+  box-shadow: 0 0 8px #ffffff;
+  pointer-events: none;
+  transition: transform 0.05s linear;
+}
+
+.eval-ribbon-tooltip {
+  position: absolute;
+  bottom: 54px;
+  transform: translateX(-50%);
+  background: rgba(14, 18, 27, 0.95);
+  border: 1px solid var(--roman-gold);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--carrara-white);
+  pointer-events: none;
+  white-space: nowrap;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
+  z-index: 20;
+}
+
+/* ==========================================================
+   Game Review Modal & Accuracy Report
+   ========================================================== */
+.game-review-card {
+  background: var(--basalt-glass-card);
+  border: 2px solid var(--roman-gold);
+  box-shadow: 0 0 40px var(--roman-gold-glow), 0 25px 70px rgba(0, 0, 0, 0.95);
+  border-radius: 18px;
+  padding: 24px 28px;
+  max-width: 820px;
+  width: 95%;
+  max-height: 90vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  position: relative;
+  backdrop-filter: blur(20px);
+}
+
+.review-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.25);
+  padding-bottom: 12px;
+}
+
+.review-title-cluster {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.review-laurel {
+  font-size: 28px;
+}
+
+.review-modal-close-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  color: var(--text-secondary);
+  border-radius: 8px;
+  width: 32px;
+  height: 32px;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.review-modal-close-btn:hover {
+  background: rgba(239, 68, 68, 0.25);
+  border-color: #ef4444;
+  color: #ffffff;
+}
+
+/* Dual Accuracy Meter Grid */
+.accuracy-hero-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.accuracy-hero-card {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  border-radius: 12px;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.accuracy-hero-card:hover {
+  border-color: var(--roman-gold);
+  transform: translateY(-2px);
+}
+
+.acc-gauge-wrapper {
+  position: relative;
+  width: 76px;
+  height: 76px;
+  flex-shrink: 0;
+}
+
+.acc-gauge-svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.acc-gauge-bg {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.08);
+  stroke-width: 8;
+}
+
+.acc-gauge-val {
+  fill: none;
+  stroke: var(--roman-gold);
+  stroke-width: 8;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 1s ease-out;
+}
+
+.white-player .acc-gauge-val {
+  stroke: #60a5fa;
+}
+
+.black-player .acc-gauge-val {
+  stroke: #34d399;
+}
+
+.acc-score-display {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.acc-number {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1;
+}
+
+.acc-label {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.acc-player-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.acc-player-name {
+  font-family: var(--font-roman);
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--carrara-white);
+}
+
+.acc-player-tier {
+  font-size: 12px;
+  color: var(--roman-gold-light);
+  font-weight: 600;
+}
+
+/* Move Classification Matrix */
+.move-breakdown-panel {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.breakdown-header {
+  display: grid;
+  grid-template-columns: 80px 1fr 80px;
+  background: rgba(212, 175, 55, 0.12);
+  padding: 8px 16px;
+  font-family: var(--font-roman);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: var(--roman-gold-light);
+  text-align: center;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+}
+
+.breakdown-header .col-wh {
+  text-align: left;
+}
+
+.breakdown-header .col-bl {
+  text-align: right;
+}
+
+.breakdown-rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.breakdown-row {
+  display: grid;
+  grid-template-columns: 80px 1fr 80px;
+  align-items: center;
+  padding: 6px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  font-size: 12px;
+}
+
+.breakdown-row:last-child {
+  border-bottom: none;
+}
+
+.breakdown-row:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.count-wh {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--text-primary);
+  text-align: left;
+}
+
+.count-bl {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--text-primary);
+  text-align: right;
+}
+
+.breakdown-category {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.class-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+.class-pill.brilliant { background: rgba(27, 172, 166, 0.2); border: 1px solid #1baca6; color: #2dd4bf; }
+.class-pill.great { background: rgba(92, 139, 176, 0.2); border: 1px solid #5c8bb0; color: #60a5fa; }
+.class-pill.best { background: rgba(149, 184, 60, 0.2); border: 1px solid #95b83c; color: #a3e635; }
+.class-pill.book { background: rgba(212, 175, 55, 0.2); border: 1px solid #d4af37; color: #facc15; }
+.class-pill.inaccuracy { background: rgba(230, 157, 0, 0.2); border: 1px solid #e69d00; color: #fbbf24; }
+.class-pill.mistake { background: rgba(230, 107, 0, 0.2); border: 1px solid #e66b00; color: #fb923c; }
+.class-pill.blunder { background: rgba(204, 51, 51, 0.2); border: 1px solid #cc3333; color: #f87171; }
+.class-pill.miss { background: rgba(220, 38, 38, 0.2); border: 1px solid #dc2626; color: #fca5a5; }
+
+/* Large Interactive Review Graph */
+.review-graph-container {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  border-radius: 12px;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.graph-header-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.graph-title {
+  font-family: var(--font-roman);
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: var(--roman-gold-light);
+}
+
+.graph-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.review-graph-scroll-wrap {
+  position: relative;
+  height: 130px;
+  background: rgba(10, 13, 20, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: crosshair;
+}
+
+.review-eval-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.eval-graph-tooltip {
+  position: absolute;
+  background: rgba(14, 18, 27, 0.96);
+  border: 1px solid var(--roman-gold);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--carrara-white);
+  pointer-events: none;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.8);
+  z-index: 30;
+  white-space: nowrap;
+}
+
+/* Turning Point Card */
+.turning-point-card {
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.14) 0%, rgba(22, 28, 42, 0.9) 100%);
+  border: 1px solid var(--roman-gold);
+  border-radius: 12px;
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tp-badge-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.tp-badge {
+  background: var(--roman-gold);
+  color: #12100a;
+  font-family: var(--font-roman);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  padding: 3px 10px;
+  border-radius: 6px;
+}
+
+.tp-move-indicator {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--roman-gold-light);
+}
+
+.tp-description {
+  font-family: var(--font-serif);
+  font-size: 14.5px;
+  line-height: 1.45;
+  color: var(--carrara-white);
+}
+
+.review-modal-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.review-modal-actions .modal-btn {
+  flex: 1;
+  min-width: 180px;
+}
+
+/* ==========================================================
+   PGN Import Modal Styles
+   ========================================================== */
+.pgn-import-card {
+  background: var(--basalt-glass-card);
+  border: 2px solid var(--roman-gold);
+  box-shadow: 0 0 40px var(--roman-gold-glow), 0 25px 70px rgba(0, 0, 0, 0.95);
+  border-radius: 18px;
+  padding: 24px 28px;
+  max-width: 640px;
+  width: 95%;
+  max-height: 90vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  position: relative;
+  backdrop-filter: blur(20px);
+}
+
+.pgn-sample-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pgn-sample-label {
+  font-family: var(--font-roman);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  color: var(--roman-gold-light);
+}
+
+.pgn-sample-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sample-pgn-chip {
+  background: rgba(212, 175, 55, 0.12);
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  color: var(--text-secondary);
+  font-family: var(--font-main);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sample-pgn-chip:hover {
+  background: var(--roman-gold);
+  color: #12100a;
+  border-color: #f5e6b3;
+  transform: translateY(-1px);
+}
+
+.pgn-input-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pgn-input-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pgn-textarea-label {
+  font-family: var(--font-roman);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  color: var(--text-secondary);
+}
+
+.btn-clear-pgn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 11px;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.btn-clear-pgn:hover {
+  color: #ef4444;
+}
+
+.pgn-textarea {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: #ffffff;
+  resize: vertical;
+  line-height: 1.5;
+  box-sizing: border-box;
+}
+
+.pgn-textarea:focus {
+  outline: none;
+  border-color: var(--roman-gold);
+  box-shadow: 0 0 12px var(--roman-gold-glow);
+}
+
+.pgn-import-options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pgn-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.pgn-checkbox-label input[type="checkbox"] {
+  accent-color: var(--roman-gold);
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+}
+
+/* ==========================================================
+   Light Theme Adaptations for Review & PGN Modals
+   ========================================================== */
+body.light-theme .game-review-card,
+body.light-theme .pgn-import-card {
+  background: rgba(255, 255, 255, 0.98);
+  border-color: #b38c20;
+  box-shadow: 0 0 40px rgba(179, 140, 32, 0.25), 0 25px 70px rgba(0, 0, 0, 0.18);
+  color: #1c1917;
+}
+
+body.light-theme .eval-ribbon-stage {
+  background: rgba(255, 252, 245, 0.95);
+  border-color: rgba(179, 140, 32, 0.25);
+}
+
+body.light-theme .eval-ribbon-track-wrapper {
+  background: rgba(0, 0, 0, 0.06);
+  border-color: rgba(179, 140, 32, 0.3);
+}
+
+body.light-theme .accuracy-hero-card {
+  background: rgba(0, 0, 0, 0.03);
+  border-color: rgba(179, 140, 32, 0.25);
+}
+
+body.light-theme .acc-number {
+  color: #1c1917;
+}
+
+body.light-theme .acc-player-name {
+  color: #1c1917;
+}
+
+body.light-theme .move-breakdown-panel {
+  background: rgba(0, 0, 0, 0.02);
+  border-color: rgba(179, 140, 32, 0.25);
+}
+
+body.light-theme .breakdown-row {
+  border-color: rgba(0, 0, 0, 0.06);
+}
+
+body.light-theme .count-wh,
+body.light-theme .count-bl {
+  color: #1c1917;
+}
+
+body.light-theme .review-graph-container {
+  background: rgba(0, 0, 0, 0.03);
+  border-color: rgba(179, 140, 32, 0.25);
+}
+
+body.light-theme .review-graph-scroll-wrap {
+  background: #ffffff;
+  border-color: rgba(179, 140, 32, 0.2);
+}
+
+body.light-theme .turning-point-card {
+  background: linear-gradient(135deg, rgba(179, 140, 32, 0.12) 0%, rgba(255, 255, 255, 0.95) 100%);
+  border-color: #b38c20;
+}
+
+body.light-theme .tp-description {
+  color: #1c1917;
+}
+
+body.light-theme .pgn-textarea {
+  background: #ffffff;
+  border-color: rgba(179, 140, 32, 0.35);
+  color: #1c1917;
+}
+
+body.light-theme .sample-pgn-chip {
+  background: rgba(179, 140, 32, 0.1);
+  border-color: rgba(179, 140, 32, 0.3);
+  color: #44403c;
+}
+
+body.light-theme .sample-pgn-chip:hover {
+  background: #b38c20;
+  color: #ffffff;
+}
+
+body.light-theme .btn-review-bar {
+  background: linear-gradient(135deg, rgba(179, 140, 32, 0.15) 0%, rgba(140, 109, 59, 0.1) 100%);
+  border-color: #b38c20;
+  color: #785309;
+}
+
+body.light-theme .btn-review-bar:hover {
+  background: linear-gradient(135deg, #b38c20 0%, #d4af37 100%);
+  color: #ffffff;
+}
+
+/* ==========================================================
+   User-Drawn Board Annotations & Square Auras (Lichess/ChessBase)
+   ========================================================== */
+.sq.user-aura-green {
+  background: radial-gradient(circle at center, rgba(52, 211, 153, 0.45) 0%, rgba(16, 185, 129, 0.35) 60%, rgba(5, 150, 105, 0.25) 100%) !important;
+  box-shadow: inset 0 0 0 3px rgba(52, 211, 153, 0.9), inset 0 0 16px rgba(52, 211, 153, 0.5) !important;
+}
+
+.sq.user-aura-red {
+  background: radial-gradient(circle at center, rgba(248, 113, 113, 0.45) 0%, rgba(239, 68, 68, 0.35) 60%, rgba(220, 38, 38, 0.25) 100%) !important;
+  box-shadow: inset 0 0 0 3px rgba(248, 113, 113, 0.9), inset 0 0 16px rgba(248, 113, 113, 0.5) !important;
+}
+
+.sq.user-aura-gold {
+  background: radial-gradient(circle at center, rgba(251, 191, 36, 0.45) 0%, rgba(245, 158, 11, 0.35) 60%, rgba(217, 119, 6, 0.25) 100%) !important;
+  box-shadow: inset 0 0 0 3px rgba(251, 191, 36, 0.9), inset 0 0 16px rgba(251, 191, 36, 0.5) !important;
+}
+
+/* Light theme board square auras */
+body.light-theme .sq.user-aura-green {
+  background: radial-gradient(circle at center, rgba(16, 185, 129, 0.35) 0%, rgba(5, 150, 105, 0.25) 60%, rgba(4, 120, 87, 0.15) 100%) !important;
+  box-shadow: inset 0 0 0 3px rgba(16, 185, 129, 0.95), inset 0 0 14px rgba(16, 185, 129, 0.45) !important;
+}
+
+body.light-theme .sq.user-aura-red {
+  background: radial-gradient(circle at center, rgba(239, 68, 68, 0.35) 0%, rgba(220, 38, 38, 0.25) 60%, rgba(185, 28, 28, 0.15) 100%) !important;
+  box-shadow: inset 0 0 0 3px rgba(239, 68, 68, 0.95), inset 0 0 14px rgba(239, 68, 68, 0.45) !important;
+}
+
+body.light-theme .sq.user-aura-gold {
+  background: radial-gradient(circle at center, rgba(245, 158, 11, 0.35) 0%, rgba(217, 119, 6, 0.25) 60%, rgba(180, 83, 9, 0.15) 100%) !important;
+  box-shadow: inset 0 0 0 3px rgba(245, 158, 11, 0.95), inset 0 0 14px rgba(245, 158, 11, 0.45) !important;
+}
+
+/* User Drawn SVG Arrows */
+.arrow-path.user-preview {
+  stroke-opacity: 0.65;
+  stroke-dasharray: 8 5;
+}
+
+/* ==========================================================
+   Voice Coach Controls & Speech Pulse Animation
+   ========================================================== */
+.imessage-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-header-voice {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  color: var(--carrara);
+  padding: 5px 12px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+}
+
+.btn-header-voice:hover {
+  background: rgba(212, 175, 55, 0.15);
+  border-color: var(--roman-gold);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+.btn-header-voice.active {
+  background: rgba(52, 211, 153, 0.18);
+  border-color: rgba(52, 211, 153, 0.65);
+  color: #34d399;
+  box-shadow: 0 0 12px rgba(52, 211, 153, 0.25);
+}
+
+.btn-header-voice.speaking,
+.tool-icon-btn.speaking {
+  animation: voice-pulse 1.4s infinite ease-in-out;
+  border-color: #34d399 !important;
+  box-shadow: 0 0 16px rgba(52, 211, 153, 0.75) !important;
+}
+
+@keyframes voice-pulse {
+  0% { transform: scale(1); box-shadow: 0 0 6px rgba(52, 211, 153, 0.4); }
+  50% { transform: scale(1.05); box-shadow: 0 0 20px rgba(52, 211, 153, 0.9); }
+  100% { transform: scale(1); box-shadow: 0 0 6px rgba(52, 211, 153, 0.4); }
+}
+
+body.light-theme .btn-header-voice {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(184, 134, 11, 0.35);
+  color: #2c251d;
+}
+
+body.light-theme .btn-header-voice:hover {
+  background: rgba(184, 134, 11, 0.12);
+  border-color: var(--roman-gold);
+  color: #1a1612;
+}
+
+body.light-theme .btn-header-voice.active {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.7);
+  color: #059669;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);
+}
+
+
 
